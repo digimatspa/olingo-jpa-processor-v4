@@ -6,6 +6,7 @@ import static com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterExceptio
 import static org.apache.olingo.commons.api.http.HttpStatusCode.INTERNAL_SERVER_ERROR;
 import static org.apache.olingo.commons.api.http.HttpStatusCode.NOT_IMPLEMENTED;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -120,10 +121,22 @@ class JPAVisitor implements JPAExpressionVisitor { // NOSONAR
     throw new ODataJPAFilterException(NOT_SUPPORTED_OPERATOR, NOT_IMPLEMENTED, operator.name());
   }
 
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   @Override
   public JPAOperator visitBinaryOperator(final BinaryOperatorKind operator, final JPAOperator left,
       final List<JPAOperator> right)
       throws ExpressionVisitException, ODataApplicationException {
+
+    final int handle = debugger.startRuntimeMeasurement(this, "visitBinaryOperator"); // NOSONAR
+    try {
+      if (operator == BinaryOperatorKind.IN) {
+        if (left instanceof JPAMemberOperator)
+          return new JPAInListOperatorImp(this.jpaComplier.getConverter(), operator, (JPAMemberOperator) left,
+              (List<JPAOperator>) right);
+      }
+    } finally {
+      debugger.stopRuntimeMeasurement(handle);
+    }
     throw new ODataJPAFilterException(NOT_SUPPORTED_OPERATOR, NOT_IMPLEMENTED, operator.name());
   }
 

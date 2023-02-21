@@ -1,5 +1,9 @@
 package com.sap.olingo.jpa.processor.core.filter;
 
+import static com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterException.MessageKeys.NOT_SUPPORTED_OPERATOR;
+import static org.apache.olingo.commons.api.http.HttpStatusCode.NOT_IMPLEMENTED;
+
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -10,6 +14,7 @@ import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.queryoption.expression.UnaryOperatorKind;
 
 import com.sap.olingo.jpa.processor.core.database.JPAODataDatabaseOperations;
+import com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterException;
 
 public class JPAOperationConverter {
 
@@ -69,12 +74,12 @@ public class JPAOperationConverter {
 
   public final Expression<Boolean> convert(final JPABooleanOperatorImp jpaOperator) throws ODataApplicationException {
     switch (jpaOperator.getOperator()) {
-      case AND:
-        return cb.and(jpaOperator.getLeft(), jpaOperator.getRight());
-      case OR:
-        return cb.or(jpaOperator.getLeft(), jpaOperator.getRight());
-      default:
-        return dbConverter.convert(jpaOperator);
+    case AND:
+      return cb.and(jpaOperator.getLeft(), jpaOperator.getRight());
+    case OR:
+      return cb.or(jpaOperator.getLeft(), jpaOperator.getRight());
+    default:
+      return dbConverter.convert(jpaOperator);
     }
   }
 
@@ -111,54 +116,66 @@ public class JPAOperationConverter {
 
   }
 
+  public <T> Expression<Boolean> convert(final JPAInListOperatorImp<T> jpaOperator)
+      throws ODataApplicationException {
+
+    switch (jpaOperator.getOperator()) {
+    case IN:
+      return inExpression((l, r) -> (l.in(r)), jpaOperator);
+    // throw new RuntimeException();
+    default:
+      throw new ODataJPAFilterException(NOT_SUPPORTED_OPERATOR, NOT_IMPLEMENTED, jpaOperator.getOperator().name());
+    }
+  }
+
   @SuppressWarnings("unchecked")
   public Expression<?> convert(final JPAMethodCall jpaFunction) throws ODataApplicationException {
     switch (jpaFunction.getFunction()) {
-      // First String functions
-      // TODO Escape like functions
-      case LENGTH:
-        return cb.length((Expression<String>) (jpaFunction.getParameter(0).get()));
-      case CONTAINS:
-        if (jpaFunction.getParameter(1) instanceof JPALiteralOperator) {
-          return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              buildLikeLiteral(jpaFunction, "%", "%").toString());
-        } else {
-          return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("%", "%"));
-        }
-      case ENDSWITH:
-        if (jpaFunction.getParameter(1) instanceof JPALiteralOperator) {
-          return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              buildLikeLiteral(jpaFunction, "%", "").toString());
-        } else {
-          return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("%", ""));
-        }
-      case STARTSWITH:
-        if (jpaFunction.getParameter(1) instanceof JPALiteralOperator) {
-          return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              buildLikeLiteral(jpaFunction, "", "%").toString());
-        } else {
-          return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("", "%"));
-        }
-      case INDEXOF:
-        final String searchString = ((String) ((JPALiteralOperator) jpaFunction.getParameter(1)).get());
-        return cb.locate((Expression<String>) (jpaFunction.getParameter(0).get()), searchString);
-      case SUBSTRING:
-        // OData defines start position in SUBSTRING as 0 (see
-        // http://docs.oasis-open.org/odata/odata/v4.0/os/part2-url-conventions/odata-v4.0-os-part2-url-conventions.html#_Toc372793820)
-        // SQL databases respectively use 1 as start position of a string
+    // First String functions
+    // TODO Escape like functions
+    case LENGTH:
+      return cb.length((Expression<String>) (jpaFunction.getParameter(0).get()));
+    case CONTAINS:
+      if (jpaFunction.getParameter(1) instanceof JPALiteralOperator) {
+        return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
+            buildLikeLiteral(jpaFunction, "%", "%").toString());
+      } else {
+        return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
+            (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("%", "%"));
+      }
+    case ENDSWITH:
+      if (jpaFunction.getParameter(1) instanceof JPALiteralOperator) {
+        return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
+            buildLikeLiteral(jpaFunction, "%", "").toString());
+      } else {
+        return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
+            (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("%", ""));
+      }
+    case STARTSWITH:
+      if (jpaFunction.getParameter(1) instanceof JPALiteralOperator) {
+        return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
+            buildLikeLiteral(jpaFunction, "", "%").toString());
+      } else {
+        return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
+            (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("", "%"));
+      }
+    case INDEXOF:
+      final String searchString = ((String) ((JPALiteralOperator) jpaFunction.getParameter(1)).get());
+      return cb.locate((Expression<String>) (jpaFunction.getParameter(0).get()), searchString);
+    case SUBSTRING:
+      // OData defines start position in SUBSTRING as 0 (see
+      // http://docs.oasis-open.org/odata/odata/v4.0/os/part2-url-conventions/odata-v4.0-os-part2-url-conventions.html#_Toc372793820)
+      // SQL databases respectively use 1 as start position of a string
 
-        final Expression<Integer> start = convertLiteralToExpression(jpaFunction, 1, 1);
-        if (jpaFunction.noParameters() == 3) {
-          final Expression<Integer> length = convertLiteralToExpression(jpaFunction, 2, 0);
-          return cb.substring((Expression<String>) (jpaFunction.getParameter(0).get()), start, length);
-        } else {
-          return cb.substring((Expression<String>) (jpaFunction.getParameter(0).get()), start);
-        }
+      final Expression<Integer> start = convertLiteralToExpression(jpaFunction, 1, 1);
+      if (jpaFunction.noParameters() == 3) {
+        final Expression<Integer> length = convertLiteralToExpression(jpaFunction, 2, 0);
+        return cb.substring((Expression<String>) (jpaFunction.getParameter(0).get()), start, length);
+      } else {
+        return cb.substring((Expression<String>) (jpaFunction.getParameter(0).get()), start);
+      }
 
-      case TOLOWER:
+    case TOLOWER:
 //      // TODO Locale!! and inverted parameter sequence
         if (jpaFunction.getParameter(0).get() instanceof String)
           return cb.literal(jpaFunction.getParameter(0).get().toString().toLowerCase());
@@ -246,5 +263,12 @@ public class JPAOperationConverter {
     } else {
       return allExpressionFunction.apply(jpaOperator.getLeft(), jpaOperator.getRightAsExpression());
     }
+  }
+
+  private <T> Expression<Boolean> inExpression(
+      final BiFunction<Expression<T>, List<T>, Expression<Boolean>> expressionFunction,
+      final JPAInListOperator<T> jpaOperator) throws ODataApplicationException {
+    return expressionFunction.apply(jpaOperator.getLeft(), jpaOperator.getRight());
+    // throw new RuntimeException();
   }
 }

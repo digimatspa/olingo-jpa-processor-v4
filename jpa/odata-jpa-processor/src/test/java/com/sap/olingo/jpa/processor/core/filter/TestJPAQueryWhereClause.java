@@ -328,6 +328,17 @@ class TestJPAQueryWhereClause extends TestBase {
     helper.assertStatus(501);
   }
 
+  //@Test
+  void testFilterIn() throws IOException, ODataException {
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
+        "AdministrativeDivisions?$filter=DivisionCode in ('DE-BY','CH-BE','US-LA')");
+    helper.assertStatus(200);
+
+    final ArrayNode orgs = helper.getValues();
+    assertEquals(110, orgs.size());
+  }
+  
   // Usage of mult currently creates parser error: The types 'Edm.Double' and '[Int64, Int32, Int16, Byte, SByte]' are
   // not compatible.
   @Disabled("Usage of mult currently creates parser error")
