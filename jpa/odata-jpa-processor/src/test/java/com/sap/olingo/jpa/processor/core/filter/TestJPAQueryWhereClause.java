@@ -398,6 +398,17 @@ class TestJPAQueryWhereClause extends TestBase {
     final ArrayNode orgs = helper.getValues();
     assertEquals(1, orgs.size());
   }
+  
+  //@Test
+  void testFilterIn() throws IOException, ODataException {
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
+        "AdministrativeDivisions?$filter=DivisionCode in ('DE-BY','CH-BE','US-LA')");
+    helper.assertStatus(200);
+
+    final ArrayNode orgs = helper.getValues();
+    assertEquals(110, orgs.size());
+  }
 
   @Test
   void testFilterLength() throws IOException, ODataException {
