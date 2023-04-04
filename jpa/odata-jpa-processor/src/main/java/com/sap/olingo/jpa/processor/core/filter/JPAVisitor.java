@@ -6,7 +6,6 @@ import static com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterExceptio
 import static org.apache.olingo.commons.api.http.HttpStatusCode.INTERNAL_SERVER_ERROR;
 import static org.apache.olingo.commons.api.http.HttpStatusCode.NOT_IMPLEMENTED;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
