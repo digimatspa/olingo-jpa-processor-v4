@@ -1,5 +1,9 @@
 package com.sap.olingo.jpa.processor.core.filter;
 
+import static com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterException.MessageKeys.NOT_SUPPORTED_OPERATOR;
+import static org.apache.olingo.commons.api.http.HttpStatusCode.NOT_IMPLEMENTED;
+
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -10,6 +14,7 @@ import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.queryoption.expression.UnaryOperatorKind;
 
 import com.sap.olingo.jpa.processor.core.database.JPAODataDatabaseOperations;
+import com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterException;
 
 public class JPAOperationConverter {
 
@@ -103,6 +108,18 @@ public class JPAOperationConverter {
         return dbConverter.convert(jpaOperator);
     }
 
+  }
+
+  public <T> Expression<Boolean> convert(final JPAInListOperatorImp<T> jpaOperator)
+      throws ODataApplicationException {
+
+    switch (jpaOperator.getOperator()) {
+      case IN:
+        return inExpression((l, r) -> (l.in(r)), jpaOperator);
+      // throw new RuntimeException();
+      default:
+        throw new ODataJPAFilterException(NOT_SUPPORTED_OPERATOR, NOT_IMPLEMENTED, jpaOperator.getOperator().name());
+    }
   }
 
   @SuppressWarnings("unchecked")
@@ -243,5 +260,12 @@ public class JPAOperationConverter {
     } else {
       return allExpressionFunction.apply(jpaOperator.getLeft(), jpaOperator.getRightAsExpression());
     }
+  }
+
+  private <T> Expression<Boolean> inExpression(
+      final BiFunction<Expression<T>, List<T>, Expression<Boolean>> expressionFunction,
+      final JPAInListOperator<T> jpaOperator) throws ODataApplicationException {
+    return expressionFunction.apply(jpaOperator.getLeft(), jpaOperator.getRight());
+    // throw new RuntimeException();
   }
 }
