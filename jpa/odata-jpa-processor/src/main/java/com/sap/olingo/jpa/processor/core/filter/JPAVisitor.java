@@ -120,7 +120,6 @@ class JPAVisitor implements JPAExpressionVisitor { // NOSONAR
     throw new ODataJPAFilterException(NOT_SUPPORTED_OPERATOR, NOT_IMPLEMENTED, operator.name());
   }
 
-  @SuppressWarnings({ "unchecked", "rawtypes" })
   @Override
   public JPAOperator visitBinaryOperator(final BinaryOperatorKind operator, final JPAOperator left,
       final List<JPAOperator> right)
@@ -130,7 +129,7 @@ class JPAVisitor implements JPAExpressionVisitor { // NOSONAR
     try {
       if (operator == BinaryOperatorKind.IN) {
         if (left instanceof JPAMemberOperator)
-          return new JPAInListOperatorImp(this.jpaComplier.getConverter(), operator, (JPAMemberOperator) left,
+          return new JPAInListOperatorImp<JPAOperator>(this.jpaComplier.getConverter(), operator, (JPAMemberOperator) left,
               (List<JPAOperator>) right);
       }
     } finally {
