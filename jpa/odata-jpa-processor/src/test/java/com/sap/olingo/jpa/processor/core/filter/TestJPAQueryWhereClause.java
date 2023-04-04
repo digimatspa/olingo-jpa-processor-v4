@@ -399,7 +399,7 @@ class TestJPAQueryWhereClause extends TestBase {
     assertEquals(1, orgs.size());
   }
   
-  //@Test
+  //@Test // This test not works on custom processor
   void testFilterIn() throws IOException, ODataException {
 
     final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
