@@ -10,11 +10,17 @@ import java.util.function.Function;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.Expression;
 
+import com.querydsl.spatial.locationtech.jts.JTSGeometryExpressions;
+import com.sap.olingo.jpa.processor.core.teiid.Olingo2Teiid;
+import org.apache.olingo.commons.api.edm.geo.Geospatial;
+import org.apache.olingo.commons.core.edm.primitivetype.AbstractGeospatialType;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.queryoption.expression.UnaryOperatorKind;
 
 import com.sap.olingo.jpa.processor.core.database.JPAODataDatabaseOperations;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterException;
+import org.hibernate.spatial.predicate.JTSSpatialPredicates;
+import org.locationtech.jts.geom.Geometry;
 
 public class JPAOperationConverter {
 
@@ -194,6 +200,18 @@ public class JPAOperationConverter {
         // Second Date-Time functions
       case NOW:
         return cb.currentTimestamp();
+
+      case GEOINTERSECTS:
+        Object firstParameter = jpaFunction.getParameter(0).get();
+        Object secondParameter = jpaFunction.getParameter(1).get();
+        if(jpaFunction.getParameter(0).get() instanceof Geospatial){
+          firstParameter = Olingo2Teiid.convertToJTS((Geospatial) jpaFunction.getParameter(0).get());
+        }
+        if(jpaFunction.getParameter(1).get() instanceof Geospatial){
+          secondParameter = Olingo2Teiid.convertToJTS((Geospatial) jpaFunction.getParameter(1).get());
+        }
+
+        return JTSSpatialPredicates.intersects(cb, (Expression<? extends Geometry>) firstParameter, (Geometry) secondParameter);
       default:
         return dbConverter.convert(jpaFunction);
     }

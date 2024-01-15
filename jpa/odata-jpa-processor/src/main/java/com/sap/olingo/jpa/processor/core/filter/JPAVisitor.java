@@ -180,7 +180,7 @@ class JPAVisitor implements JPAExpressionVisitor { // NOSONAR
     final int handle = debugger.startRuntimeMeasurement(this, "visitMember");
     final JPAPath attributePath = determineAttributePath(this.jpaComplier.getJpaEntityType(), member,
         jpaComplier.getAssociation());
-    checkTransient(attributePath);
+    //checkTransient(attributePath); TODO
     if (getLambdaType(member.getResourcePath()) == UriResourceKind.lambdaAny) {
       debugger.stopRuntimeMeasurement(handle);
       return new JPALambdaAnyOperation(this.jpaComplier, member);
@@ -320,7 +320,7 @@ class JPAVisitor implements JPAExpressionVisitor { // NOSONAR
     return selectItemPath;
   }
 
-  private void checkTransient(@Nullable final JPAPath attributePath) throws ODataApplicationException {
+  /*private void checkTransient(@Nullable final JPAPath attributePath) throws ODataApplicationException {
 
     if (attributePath != null) {
       final Optional<JPAAttribute> transientProperty = attributePath.getPath()
@@ -331,5 +331,5 @@ class JPAVisitor implements JPAExpressionVisitor { // NOSONAR
       if (transientProperty.isPresent())
         throw new ODataJPAFilterException(NOT_SUPPORTED_TRANSIENT, NOT_IMPLEMENTED, attributePath.toString());
     }
-  }
+  }*/
 }

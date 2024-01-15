@@ -220,7 +220,8 @@ public final class JPATypeConverter {
       return EdmPrimitiveTypeKind.GeographyLineString;
     else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.MultiLineString.class))
       return EdmPrimitiveTypeKind.GeographyMultiLineString;
-    else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.Polygon.class))
+    else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.Polygon.class)
+            || jpaType.equals(org.locationtech.jts.geom.Polygon.class))
       return EdmPrimitiveTypeKind.GeographyPolygon;
     else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.MultiPolygon.class))
       return EdmPrimitiveTypeKind.GeographyMultiPolygon;
