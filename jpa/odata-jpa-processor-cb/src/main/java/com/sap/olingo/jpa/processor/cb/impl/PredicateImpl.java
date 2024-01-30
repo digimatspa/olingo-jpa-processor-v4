@@ -1,7 +1,6 @@
 package com.sap.olingo.jpa.processor.cb.impl;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -9,16 +8,16 @@ import java.util.Optional;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.Expression;
-import javax.persistence.criteria.Path;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Selection;
-import javax.persistence.criteria.Subquery;
+
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Selection;
+import jakarta.persistence.criteria.Subquery;
 
 import com.sap.olingo.jpa.processor.cb.exceptions.NotImplementedException;
 import com.sap.olingo.jpa.processor.cb.joiner.SqlConvertible;
-import com.sap.olingo.jpa.processor.cb.joiner.StringBuilderCollector;
 
 /**
  *
@@ -93,31 +92,6 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
   @Override
   public Class<? extends Boolean> getJavaType() {
     throw new NotImplementedException();
-  }
-
-  @Override
-  public Predicate in(final Collection<?> values) {
-    throw new NotImplementedException();
-  }
-
-  @Override
-  public Predicate in(final Expression<?>... values) {
-    throw new NotImplementedException();
-  }
-
-  @Override
-  public Predicate in(final Expression<Collection<?>> values) {
-    throw new NotImplementedException();
-  }
-
-  @Override
-  public Predicate in(final Object... values) {
-    throw new NotImplementedException();
-  }
-
-  @Override
-  public boolean isCompoundSelection() {
-    return false;
   }
 
   /**
@@ -218,7 +192,7 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
     enum Operation {
       EQ("="), NE("<>"), GT(">"), GE(">="), LT("<"), LE("<=");
 
-      private String keyWord;
+      private final String keyWord;
 
       private Operation(final String keyWord) {
         this.keyWord = keyWord;
@@ -360,37 +334,44 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
   }
 
   static class In<X> extends PredicateImpl implements CriteriaBuilder.In<X> {
-    private final List<Path<? extends X>> paths;
+    private Expression<? extends X> expression;
 
-    In(final List<Path<? extends X>> paths, final Subquery<?> subquery) {
-      super((SqlConvertible) Objects.requireNonNull(subquery));
-      this.paths = paths;
+    @SuppressWarnings("unchecked")
+    In(final List<Path<?>> paths, final Subquery<?> subquery) {
+      super(new CompoundPathImpl(paths.stream().map(path -> (Path<Comparable<?>>) path).toList()));
+      this.expression = (Expression<? extends X>) Objects.requireNonNull(subquery);
+    }
+
+    In(final List<Path<Comparable<?>>> paths) {
+      super(new CompoundPathImpl(paths));
+    }
+
+    @SuppressWarnings("unchecked")
+    In(final Path<?> path) {
+      super(new CompoundPathImpl(Collections.singletonList((Path<Comparable<?>>) path)));
     }
 
     @Override
     public StringBuilder asSQL(final StringBuilder statement) {
-      statement.append(OPENING_BRACKET);
-      statement.append(paths
-          .stream()
-          .map(p -> ((Expression<?>) p)) // NOSONAR
-          .collect(new StringBuilderCollector.ExpressionCollector(statement, ", ")));
-      statement.append(CLOSING_BRACKET)
+      expressions.get(0).asSQL(statement)
           .append(" ")
           .append(SqlKeyWords.IN)
           .append(" ")
           .append(OPENING_BRACKET);
-      final SqlConvertible sub = expressions.get(0);
-      return sub.asSQL(statement).append(CLOSING_BRACKET);
+      return ((SqlConvertible) Objects.requireNonNull(expression)).asSQL(statement).append(CLOSING_BRACKET);
     }
 
     @Override
-    public javax.persistence.criteria.CriteriaBuilder.In<X> value(final X value) {
+    public jakarta.persistence.criteria.CriteriaBuilder.In<X> value(final X value) {
       throw new NotImplementedException();
     }
 
     @Override
-    public javax.persistence.criteria.CriteriaBuilder.In<X> value(final Expression<? extends X> value) {
-      throw new NotImplementedException();
+    public jakarta.persistence.criteria.CriteriaBuilder.In<X> value(final Expression<? extends X> value) {
+      if (this.expression != null)
+        throw new NotImplementedException();
+      this.expression = Objects.requireNonNull(value);
+      return this;
     }
 
     @Override
@@ -401,7 +382,8 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
     @SuppressWarnings("unchecked")
     @Override
     public Expression<X> getExpression() {
-      return paths.isEmpty() ? null : (Expression<X>) paths.get(0);
+      final CompoundPath paths = ((CompoundPath) expressions.get(0));
+      return paths.isEmpty() ? null : (Expression<X>) paths.getFirst();
     }
 
   }

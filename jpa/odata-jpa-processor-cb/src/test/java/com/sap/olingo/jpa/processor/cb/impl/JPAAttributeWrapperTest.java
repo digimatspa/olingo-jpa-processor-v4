@@ -13,7 +13,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.stream.Stream;
 
-import javax.persistence.criteria.Selection;
+import jakarta.persistence.criteria.Selection;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,7 +54,8 @@ class JPAAttributeWrapperTest {
         arguments(c.getMethod("getEdmType")),
         arguments(c.getMethod("getProperty")),
         arguments(c.getMethod("getStructuredType")),
-        arguments(c.getMethod("getCalculatorConstructor")));
+        arguments(c.getMethod("getCalculatorConstructor")),
+        arguments(c.getMethod("getJavaType")));
   }
 
   static Stream<Arguments> returnsFalse() throws NoSuchMethodException, SecurityException {
@@ -107,5 +108,10 @@ class JPAAttributeWrapperTest {
   @Test
   void testGetType() {
     assertEquals(String.class, cut.getType());
+  }
+
+  @Test
+  void testGetDbType() {
+    assertEquals(String.class, cut.getDbType());
   }
 }

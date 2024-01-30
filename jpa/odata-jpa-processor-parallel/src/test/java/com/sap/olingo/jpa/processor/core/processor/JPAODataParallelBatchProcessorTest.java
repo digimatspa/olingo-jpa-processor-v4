@@ -8,8 +8,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import javax.persistence.EntityManager;
-import javax.persistence.RollbackException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.RollbackException;
 
 import org.apache.olingo.commons.api.http.HttpMethod;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
@@ -98,6 +98,8 @@ class JPAODataParallelBatchProcessorTest {
     final ODataJPABatchException act = Assertions.assertThrows(ODataJPABatchException.class, () -> cut.buildGroups(
         requests));
     Assertions.assertEquals(HttpStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), act.getStatusCode());
+    Assertions.assertNotNull(act.getMessage());
+    Assertions.assertFalse(act.getMessage().contains("No message text found"));
   }
 
   @Test

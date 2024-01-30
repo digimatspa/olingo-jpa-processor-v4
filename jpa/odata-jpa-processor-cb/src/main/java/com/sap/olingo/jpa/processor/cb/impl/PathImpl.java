@@ -11,12 +11,13 @@ import java.util.Objects;
 import java.util.Optional;
 
 import javax.annotation.Nonnull;
-import javax.persistence.criteria.Expression;
-import javax.persistence.criteria.Path;
-import javax.persistence.metamodel.Bindable;
-import javax.persistence.metamodel.MapAttribute;
-import javax.persistence.metamodel.PluralAttribute;
-import javax.persistence.metamodel.SingularAttribute;
+
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.metamodel.Bindable;
+import jakarta.persistence.metamodel.MapAttribute;
+import jakarta.persistence.metamodel.PluralAttribute;
+import jakarta.persistence.metamodel.SingularAttribute;
 
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
@@ -54,14 +55,6 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
     this.parent = Objects.requireNonNull(parent);
     this.st = type;
     this.tableAlias = Optional.ofNullable(tableAlias.orElseGet(this::tableAliasFromParent));
-  }
-
-  PathImpl(final PathImpl<X> s, final Optional<String> newTableAlias) {
-    super();
-    this.path = s.path;
-    this.parent = s.parent;
-    this.st = s.st;
-    this.tableAlias = newTableAlias;
   }
 
   @Override
@@ -110,7 +103,8 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
   /**
    * Create a path corresponding to the referenced attribute.
    *
-   * <p> Note: Applications using the string-based API may need to
+   * <p>
+   * Note: Applications using the string-based API may need to
    * specify the type resulting from the <code>get</code> operation in order
    * to avoid the use of <code>Path</code> variables.
    *
@@ -174,7 +168,7 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
   private boolean isKeyPath(final JPAPath jpaPath) throws ODataJPAModelException {
     return st.getKeyPath()
         .stream()
-        .anyMatch(p -> p.getAlias().equals(jpaPath.getAlias()));
+        .anyMatch(keyPath -> keyPath.getAlias().equals(jpaPath.getAlias()));
   }
 
   /**
@@ -227,8 +221,8 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
       return singletonList((Path<Object>) this);
     return getPathList()
         .stream()
-        .map(e -> new PathImpl<>(e, parent, st, tableAlias))
-        .collect(toList());
+        .map(jpaPath -> new PathImpl<>(jpaPath, parent, st, tableAlias))
+        .collect(toList()); // NOSONAR
 
   }
 
@@ -241,19 +235,12 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
     return result;
   }
 
-  @SuppressWarnings("rawtypes")
   @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) return true;
-    if (obj == null) return false;
-    if (getClass() != obj.getClass()) return false;
-    final PathImpl other = (PathImpl) obj;
-    if (!path.isPresent()) {
-      if (other.path.isPresent()) return false;
-    } else if (!path.equals(other.path)) return false;
-    if (!tableAlias.isPresent()) {
-      if (other.tableAlias.isPresent()) return false;
-    } else if (!tableAlias.equals(other.tableAlias)) return false;
-    return true;
+  public boolean equals(final Object object) {
+    return (object instanceof final PathImpl<?> otherPath)
+        && (path.isEmpty() && otherPath.path.isEmpty()
+            || path.isPresent() && path.equals(otherPath.path))
+        && (tableAlias.isEmpty() && otherPath.tableAlias.isEmpty()
+            || tableAlias.isPresent() && tableAlias.equals(otherPath.tableAlias));
   }
 }

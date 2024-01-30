@@ -1,8 +1,8 @@
 package com.sap.olingo.jpa.processor.core.filter;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.Expression;
-import javax.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Subquery;
 
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.queryoption.expression.ExpressionVisitException;
@@ -24,12 +24,18 @@ final class JPALambdaAllOperation extends JPALambdaOperation {
   @Override
   public Expression<Boolean> get() throws ODataApplicationException {
     final CriteriaBuilder cb = converter.cb;
-    return cb.and(cb.exists(getExistsQuery()), cb.not(cb.exists(getNotExistsQuery())));
+    return cb.and(cb.exists(getExistsQuery().query()), cb.not(cb.exists(getNotExistsQuery())));
   }
 
   @Override
   public String getName() {
     return "ALL";
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public Enum<?> getOperator() {
+    return null;
   }
 
   private class NotExpression implements Unary {

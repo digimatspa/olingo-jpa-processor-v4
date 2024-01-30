@@ -3,7 +3,9 @@ package com.sap.olingo.jpa.metadata.core.edm.mapper.exception;
 import java.util.Enumeration;
 import java.util.Formatter;
 import java.util.Locale;
+import java.util.MissingResourceException;
 import java.util.ResourceBundle;
+import java.util.ResourceBundle.Control;
 
 public class ODataJPAMessageTextBuffer implements ODataJPAMessageBufferRead {
   private static final String PATH_SEPARATOR = ".";
@@ -36,7 +38,7 @@ public class ODataJPAMessageTextBuffer implements ODataJPAMessageBufferRead {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAMessageBufferRead#getText(java.lang.Object,
    * java.lang.String)
    */
@@ -79,7 +81,8 @@ public class ODataJPAMessageTextBuffer implements ODataJPAMessageBufferRead {
     return locale;
   }
 
-  private ResourceBundle getResourceBundle(final Locale resourceLocale) {
-    return ResourceBundle.getBundle(bundleName, resourceLocale);
+  private ResourceBundle getResourceBundle(final Locale resourceLocale) throws MissingResourceException {
+    return ResourceBundle.getBundle(bundleName, resourceLocale, Control.getNoFallbackControl(
+        Control.FORMAT_PROPERTIES));
   }
 }

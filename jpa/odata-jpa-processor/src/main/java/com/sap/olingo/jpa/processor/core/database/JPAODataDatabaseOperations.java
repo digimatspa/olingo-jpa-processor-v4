@@ -1,7 +1,7 @@
 package com.sap.olingo.jpa.processor.core.database;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.Expression;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 
 import org.apache.olingo.server.api.ODataApplicationException;
 
@@ -14,7 +14,7 @@ import com.sap.olingo.jpa.processor.core.filter.JPAUnaryBooleanOperator;
 
 public interface JPAODataDatabaseOperations {
 
-  public void setCriterialBuilder(final CriteriaBuilder cb);
+  public void setCriteriaBuilder(final CriteriaBuilder cb);
 
   public <T extends Number> Expression<T> convert(final JPAArithmeticOperator jpaOperator)
       throws ODataApplicationException;

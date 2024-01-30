@@ -3,9 +3,9 @@ package com.sap.olingo.jpa.processor.core.filter;
 import java.util.List;
 import java.util.Optional;
 
-import javax.persistence.EntityManager;
-import javax.persistence.criteria.Expression;
-import javax.persistence.criteria.From;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.From;
 
 import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataApplicationException;
@@ -19,6 +19,7 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.processor.core.api.JPAODataClaimProvider;
 import com.sap.olingo.jpa.processor.core.api.JPAServiceDebugger;
+import com.sap.olingo.jpa.processor.core.api.JPAServiceDebugger.JPARuntimeMeasurement;
 import com.sap.olingo.jpa.processor.core.query.JPAAbstractQuery;
 
 /**
@@ -36,6 +37,19 @@ public final class JPAFilterElementComplier extends JPAAbstractFilter {
   final JPAAbstractQuery parent;
   final List<String> groups;
 
+  /**
+   *
+   * @param odata
+   * @param sd
+   * @param em
+   * @param jpaEntityType
+   * @param converter
+   * @param uriResourceParts
+   * @param parent: Query a filter belongs to.
+   * @param expression
+   * @param association
+   * @param groups
+   */
   public JPAFilterElementComplier(final OData odata, final JPAServiceDocument sd, final EntityManager em,
       final JPAEntityType jpaEntityType, final JPAOperationConverter converter,
       final List<UriResource> uriResourceParts, final JPAAbstractQuery parent, final VisitableExpression expression,
@@ -54,19 +68,17 @@ public final class JPAFilterElementComplier extends JPAAbstractFilter {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see com.sap.olingo.jpa.processor.core.filter.JPAFilterComplier#compile()
    */
   @Override
   @SuppressWarnings("unchecked")
   public Expression<Boolean> compile() throws ExpressionVisitException, ODataApplicationException {
-    final int handle = parent.getDebugger().startRuntimeMeasurement("JPAFilterCrossComplier", "compile");
 
-    final ExpressionVisitor<JPAOperator> visitor = new JPAVisitor(this);
-    final Expression<Boolean> finalExpression = (Expression<Boolean>) expression.accept(visitor).get();
-
-    parent.getDebugger().stopRuntimeMeasurement(handle);
-    return finalExpression;
+    try (JPARuntimeMeasurement measurement = parent.getDebugger().newMeasurement(this, "compile")) {
+      final ExpressionVisitor<JPAOperator> visitor = new JPAVisitor(this);
+      return (Expression<Boolean>) expression.accept(visitor).get();
+    }
   }
 
   @Override
@@ -85,7 +97,7 @@ public final class JPAFilterElementComplier extends JPAAbstractFilter {
   }
 
   @Override
-  public OData getOdata() {
+  public OData getOData() {
     return odata;
   }
 
@@ -108,9 +120,10 @@ public final class JPAFilterElementComplier extends JPAAbstractFilter {
     return expression;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
-  public From<?, ?> getRoot() {
-    return parent.getRoot();
+  public <S, T> From<S, T> getRoot() {
+    return (From<S, T>) parent.getRoot();
   }
 
   @Override
@@ -126,5 +139,10 @@ public final class JPAFilterElementComplier extends JPAAbstractFilter {
   @Override
   public List<String> getGroups() {
     return groups;
+  }
+
+  @Override
+  public Optional<JPAFilterRestrictionsWatchDog> getWatchDog() {
+    return Optional.empty();
   }
 }

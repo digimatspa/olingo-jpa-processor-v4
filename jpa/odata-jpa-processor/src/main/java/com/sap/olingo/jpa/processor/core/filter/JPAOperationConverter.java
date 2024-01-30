@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.Expression;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 
 import com.querydsl.spatial.locationtech.jts.JTSGeometryExpressions;
 import com.sap.olingo.jpa.processor.core.teiid.Olingo2Teiid;
@@ -31,7 +31,7 @@ public class JPAOperationConverter {
     super();
     this.cb = cb;
     this.dbConverter = converterExtension;
-    this.dbConverter.setCriterialBuilder(cb);
+    this.dbConverter.setCriteriaBuilder(cb);
   }
 
   public final Expression<Long> convert(final JPAAggregationOperationImp jpaOperator) throws ODataApplicationException {
@@ -68,8 +68,8 @@ public class JPAOperationConverter {
           return (Expression<T>) cb.prod(jpaOperator.getLeft(cb), jpaOperator.getRightAsExpression());
       case MOD:
         if (jpaOperator.getRight() instanceof JPALiteralOperator)
-          return (Expression<T>) cb.mod(jpaOperator.getLeftAsIntExpression(), new Integer(jpaOperator.getRightAsNumber(
-              cb).toString()));
+          return (Expression<T>) cb.mod(jpaOperator.getLeftAsIntExpression(), Integer.valueOf(jpaOperator
+              .getRightAsNumber(cb).toString()));
         else
           return (Expression<T>) cb.mod(jpaOperator.getLeftAsIntExpression(), jpaOperator.getRightAsIntExpression());
 
@@ -95,20 +95,26 @@ public class JPAOperationConverter {
 
     switch (jpaOperator.getOperator()) {
       case EQ:
-        return equalExpression((l, r) -> (cb.equal(l, r)), (l, r) -> (cb.equal(l, r)), (l) -> (cb.isNull(l)),
+        return equalExpression((left, right) -> (cb.equal(left, right)), (left, right) -> (cb.equal(left, right)),
+            left -> (cb.isNull(left)),
             jpaOperator);
       case NE:
-        return equalExpression((l, r) -> (cb.notEqual(l, r)), (l, r) -> (cb.notEqual(l, r)), (l) -> (cb.isNotNull(l)),
+        return equalExpression((left, right) -> (cb.notEqual(left, right)), (left, right) -> (cb.notEqual(left, right)),
+            left -> (cb.isNotNull(left)),
             jpaOperator);
       case GE:
-        return comparisonExpression((l, r) -> (cb.greaterThanOrEqualTo(l, r)), (l, r) -> (cb.greaterThanOrEqualTo(l,
-            r)), jpaOperator);
+        return comparisonExpression((left, right) -> (cb.greaterThanOrEqualTo(left, right)), (left, right) -> (cb
+            .greaterThanOrEqualTo(left,
+                right)), jpaOperator);
       case GT:
-        return comparisonExpression((l, r) -> (cb.greaterThan(l, r)), (l, r) -> (cb.greaterThan(l, r)), jpaOperator);
+        return comparisonExpression((left, right) -> (cb.greaterThan(left, right)), (left, right) -> (cb.greaterThan(
+            left, right)), jpaOperator);
       case LT:
-        return comparisonExpression((l, r) -> (cb.lessThan(l, r)), (l, r) -> (cb.lessThan(l, r)), jpaOperator);
+        return comparisonExpression((left, right) -> (cb.lessThan(left, right)), (left, right) -> (cb.lessThan(left,
+            right)), jpaOperator);
       case LE:
-        return comparisonExpression((l, r) -> (cb.lessThanOrEqualTo(l, r)), (l, r) -> (cb.lessThanOrEqualTo(l, r)),
+        return comparisonExpression((left, right) -> (cb.lessThanOrEqualTo(left, right)), (left, right) -> (cb
+            .lessThanOrEqualTo(left, right)),
             jpaOperator);
       default:
         return dbConverter.convert(jpaOperator);
@@ -187,13 +193,10 @@ public class JPAOperationConverter {
       case TRIM:
         return cb.trim((Expression<String>) (jpaFunction.getParameter(0).get()));
       case CONCAT:
-        if (jpaFunction.getParameter(0).get() instanceof String)
-          return cb.concat((String) jpaFunction.getParameter(0).get(), (Expression<String>) (jpaFunction.getParameter(1)
-              .get()));
-        if (jpaFunction.getParameter(1).get() instanceof String)
-          return cb.concat((Expression<String>) (jpaFunction.getParameter(0).get()), (String) jpaFunction.getParameter(
-              1)
-              .get());
+        if (jpaFunction.getParameter(0).get() instanceof final String parameter0)
+          return cb.concat(parameter0, (Expression<String>) (jpaFunction.getParameter(1).get()));
+        if (jpaFunction.getParameter(1).get() instanceof final String parameter1)
+          return cb.concat((Expression<String>) (jpaFunction.getParameter(0).get()), parameter1);
         else
           return cb.concat((Expression<String>) (jpaFunction.getParameter(0).get()),
               (Expression<String>) (jpaFunction.getParameter(1).get()));
@@ -258,7 +261,7 @@ public class JPAOperationConverter {
       else
         return (Expression<Integer>) jpaFunction.getParameter(parameterIndex).get();
     } else {
-      return cb.literal(new Integer(parameter.get().toString()) + offset);
+      return cb.literal(Integer.valueOf(parameter.get().toString()) + offset);
     }
   }
 
