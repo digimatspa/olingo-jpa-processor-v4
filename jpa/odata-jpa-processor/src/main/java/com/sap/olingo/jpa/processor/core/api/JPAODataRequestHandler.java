@@ -86,7 +86,7 @@ public class JPAODataRequestHandler {
     handler.register(serviceContext.getEdmProvider().getServiceDocument());
     handler.register(serviceContext.getErrorProcessor());
     handler.register(new JPAODataServiceDocumentProcessor(serviceContext));
-    handler.process(new JakartaRequestMapper(mappedRequest), new JakartaResponseMapper(response));
+    handler.process(mappedRequest, response);
   }
 
   private HttpServletRequest prepareRequestMapping(final HttpServletRequest req, final String requestPath) {

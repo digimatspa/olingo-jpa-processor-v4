@@ -6,10 +6,9 @@ package com.sap.olingo.jpa.metadata.core.edm.annotation;
 import java.util.Collections;
 import java.util.List;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
+import jakarta.annotation.Nullable;
 import jakarta.persistence.Tuple;
+import jakarta.annotation.Nonnull;
 
 /**
  * Transient property converter.

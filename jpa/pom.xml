@@ -13,7 +13,7 @@
 		<project.build.source>17</project.build.source>
 		<project.build.target>17</project.build.target>
 		<maven.compiler.version>3.11.0</maven.compiler.version>
-		<odata.version>4.10.0</odata.version>
+		<odata.version>5.0.1-SNAPSHOT</odata.version>
 		<jackson.version>2.16.0</jackson.version>
 		<powermock.version>1.7.1</powermock.version>
 		<coveralls.version>4.3.0</coveralls.version>
@@ -25,7 +25,7 @@
 		<processor.version>${project.version}</processor.version>
 		<spring-jcl.version>6.1.1</spring-jcl.version>
 		<eclipseLink.version>4.0.2</eclipseLink.version>
-		<hibernate.version>6.4.0.Final</hibernate.version>
+		<hibernate.version>6.4.2.Final</hibernate.version>
 		<openjpa.version>3.2.2</openjpa.version>
 		<junit.version>5.10.1</junit.version>
 		<junit-platform.version>1.10.1</junit-platform.version>
@@ -197,6 +197,11 @@
 				<groupId>jakarta.transaction</groupId>
 				<artifactId>jakarta.transaction-api</artifactId>
 				<version>2.0.1</version>
+			</dependency>
+			<dependency>
+				<groupId>jakarta.annotation</groupId>
+				<artifactId>jakarta.annotation-api</artifactId>
+				<version>3.0.0-M1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>

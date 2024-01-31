@@ -10,10 +10,8 @@ import java.util.function.Function;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 
-import com.querydsl.spatial.locationtech.jts.JTSGeometryExpressions;
 import com.sap.olingo.jpa.processor.core.teiid.Olingo2Teiid;
 import org.apache.olingo.commons.api.edm.geo.Geospatial;
-import org.apache.olingo.commons.core.edm.primitivetype.AbstractGeospatialType;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.queryoption.expression.UnaryOperatorKind;
 
@@ -213,8 +211,8 @@ public class JPAOperationConverter {
         if(jpaFunction.getParameter(1).get() instanceof Geospatial){
           secondParameter = Olingo2Teiid.convertToJTS((Geospatial) jpaFunction.getParameter(1).get());
         }
-
-        return JTSSpatialPredicates.intersects(cb, (Expression<? extends Geometry>) firstParameter, (Geometry) secondParameter);
+        Geometry geometryObject = (Geometry) firstParameter;
+        return JTSSpatialPredicates.intersects(cb, (Expression<? extends Geometry>) geometryObject, (Geometry) secondParameter);
       default:
         return dbConverter.convert(jpaFunction);
     }

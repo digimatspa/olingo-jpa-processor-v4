@@ -175,7 +175,7 @@ public class IntegrationTestHelper {
 
     handler.register(new JPAODataRequestProcessor(sessionContext, requestContext));
     handler.register(new JPAODataBatchProcessor(sessionContext, requestContext));
-    handler.process(new JakartaRequestMapper(request), new JakartaResponseMapper(response));
+    handler.process(request, response);
 
   }
 

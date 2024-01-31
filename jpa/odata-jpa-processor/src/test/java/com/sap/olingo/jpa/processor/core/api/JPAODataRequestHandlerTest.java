@@ -112,7 +112,7 @@ class JPAODataRequestHandlerTest extends TestBase {
         .build();
     cut = new JPAODataRequestHandler(context, odata);
     cut.process(request, response);
-    verify(handler, times(1)).process(argThat(new WrappedHttpRequestMatcher()), any());
+    verify(handler, times(1)).process((HttpServletRequest) argThat(new WrappedHttpRequestMatcher()), any());
   }
 
   @Test
@@ -126,7 +126,7 @@ class JPAODataRequestHandlerTest extends TestBase {
         .build();
     cut = new JPAODataRequestHandler(context, odata);
     cut.process(request, response);
-    verify(handler, times(1)).process(argThat(new HttpRequestMatcher()), any());
+    verify(handler, times(1)).process((HttpServletRequest) argThat(new HttpRequestMatcher()), any());
   }
 
   @Test
@@ -141,7 +141,7 @@ class JPAODataRequestHandlerTest extends TestBase {
         .build();
     cut = new JPAODataRequestHandler(context, odata);
     cut.process(request, response);
-    verify(handler, times(1)).process(argThat(new HttpRequestMatcher()), any());
+    verify(handler, times(1)).process((HttpServletRequest) argThat(new HttpRequestMatcher()), any());
   }
 
   public static class HttpRequestMatcher implements ArgumentMatcher<javax.servlet.http.HttpServletRequest> {
@@ -149,7 +149,7 @@ class JPAODataRequestHandlerTest extends TestBase {
     public boolean matches(final javax.servlet.http.HttpServletRequest argument) {
       if (argument instanceof JakartaRequestMapper) {
         final HttpServletRequest wrapped = ((JakartaRequestMapper) argument).getWrapped();
-        return wrapped instanceof HttpServletRequest && !(wrapped instanceof HttpServletRequestWrapper);
+        return wrapped != null && !(wrapped instanceof HttpServletRequestWrapper);
       } else
         return false;
     }
