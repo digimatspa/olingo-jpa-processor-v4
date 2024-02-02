@@ -4,8 +4,9 @@ target/
 /target/
 /.pmd
 .classpath
+.idea/
+../.idea/
 
 # --- EclipseIDE stuff START
-.settings/
 .metadata
 *.log

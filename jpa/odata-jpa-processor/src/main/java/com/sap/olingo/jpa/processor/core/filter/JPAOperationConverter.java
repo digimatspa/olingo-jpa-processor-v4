@@ -211,8 +211,7 @@ public class JPAOperationConverter {
         if(jpaFunction.getParameter(1).get() instanceof Geospatial){
           secondParameter = Olingo2Teiid.convertToJTS((Geospatial) jpaFunction.getParameter(1).get());
         }
-        Geometry geometryObject = (Geometry) firstParameter;
-        return JTSSpatialPredicates.intersects(cb, (Expression<? extends Geometry>) geometryObject, (Geometry) secondParameter);
+        return JTSSpatialPredicates.intersects(cb, (Expression<? extends Geometry>) firstParameter, (Geometry) secondParameter);
       default:
         return dbConverter.convert(jpaFunction);
     }

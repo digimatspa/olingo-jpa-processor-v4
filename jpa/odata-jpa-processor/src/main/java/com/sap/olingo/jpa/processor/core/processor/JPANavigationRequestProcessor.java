@@ -174,6 +174,26 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
         throw new ODataJPAProcessorException(ODATA_MAXPAGESIZE_NOT_A_NUMBER, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
       }
     }
+    else if(page != null && page.skip() != 0){
+      int newSkipValue = page.skip() + page.top();
+      try {
+        return new URI(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?"
+                + SystemQueryOptionKind.SKIP.toString() + "=" + newSkipValue);
+      }
+      catch (final URISyntaxException e) {
+        throw new ODataJPAProcessorException(ODATA_MAXPAGESIZE_NOT_A_NUMBER, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
+      }
+    }
+    else if(page != null){
+      int skipValue = page.top();
+      try {
+        return new URI(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?"
+                + SystemQueryOptionKind.SKIP.toString() + "=" + skipValue);
+      }
+      catch (final URISyntaxException e) {
+        throw new ODataJPAProcessorException(ODATA_MAXPAGESIZE_NOT_A_NUMBER, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
+      }
+    }
     return null;
   }
 

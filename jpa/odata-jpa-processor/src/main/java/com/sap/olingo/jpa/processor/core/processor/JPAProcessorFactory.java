@@ -31,6 +31,9 @@ import com.sap.olingo.jpa.processor.core.modify.JPAConversionHelper;
 import com.sap.olingo.jpa.processor.core.query.JPACountQuery;
 import com.sap.olingo.jpa.processor.core.query.JPAJoinQuery;
 import com.sap.olingo.jpa.processor.core.serializer.JPASerializerFactory;
+import org.apache.olingo.server.api.uri.queryoption.TopOption;
+import org.apache.olingo.server.core.uri.queryoption.SkipOptionImpl;
+import org.apache.olingo.server.core.uri.queryoption.TopOptionImpl;
 
 public final class JPAProcessorFactory {
   private final JPAODataSessionContextAccess sessionContext;
@@ -145,6 +148,23 @@ public final class JPAProcessorFactory {
         page = firstPage != null ? firstPage : page;
       }
     }
+
+    TopOptionImpl topOption = uriInfo.getSystemQueryOptions().stream()
+            .filter(option -> option.getKind() == SystemQueryOptionKind.TOP)
+            .map(option -> (TopOptionImpl) option)
+            .findFirst()
+            .orElse(new TopOptionImpl().setValue(20));
+
+    topOption.setText(String.valueOf(topOption.getValue()));
+
+    SkipOptionImpl skipOption = uriInfo.getSystemQueryOptions().stream()
+            .filter(option -> option.getKind() == SystemQueryOptionKind.SKIP)
+            .map(option -> (SkipOptionImpl) option)
+            .findFirst()
+
+            .orElse(new SkipOptionImpl().setValue(0));
+
+    page = new JPAODataPage(uriInfo, skipOption.getValue(),  topOption.getValue(),null);
     return page;
   }
 
