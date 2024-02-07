@@ -31,7 +31,6 @@ import com.sap.olingo.jpa.processor.core.modify.JPAConversionHelper;
 import com.sap.olingo.jpa.processor.core.query.JPACountQuery;
 import com.sap.olingo.jpa.processor.core.query.JPAJoinQuery;
 import com.sap.olingo.jpa.processor.core.serializer.JPASerializerFactory;
-import org.apache.olingo.server.api.uri.queryoption.TopOption;
 import org.apache.olingo.server.core.uri.queryoption.SkipOptionImpl;
 import org.apache.olingo.server.core.uri.queryoption.TopOptionImpl;
 
@@ -149,6 +148,22 @@ public final class JPAProcessorFactory {
       }
     }
 
+    boolean hasTileIDFilter = uriInfo.getFilterOption() != null &&
+            uriInfo.getFilterOption().getExpression() != null &&
+            uriInfo.getFilterOption().getExpression().toString().contains("TileID");
+
+    boolean containsGeoIntersectsFilter = uriInfo.getFilterOption() != null &&
+            uriInfo.getFilterOption().getExpression() != null &&
+            uriInfo.getFilterOption().getExpression().toString().contains("geo.intersects");
+
+    boolean hasRequiredFilters = uriInfo.getFilterOption() != null &&
+            (hasTileIDFilter || containsGeoIntersectsFilter);
+
+    // Verifica la presenza di filtri necessari
+    if (uriInfo.getFilterOption() != null && !hasRequiredFilters) {
+      throw new ODataException("Errore: la query deve contenere il filtro TileID o geo.intersects");
+    }
+
     TopOptionImpl topOption = uriInfo.getSystemQueryOptions().stream()
             .filter(option -> option.getKind() == SystemQueryOptionKind.TOP)
             .map(option -> (TopOptionImpl) option)
@@ -161,7 +176,6 @@ public final class JPAProcessorFactory {
             .filter(option -> option.getKind() == SystemQueryOptionKind.SKIP)
             .map(option -> (SkipOptionImpl) option)
             .findFirst()
-
             .orElse(new SkipOptionImpl().setValue(0));
 
     page = new JPAODataPage(uriInfo, skipOption.getValue(),  topOption.getValue(),null);

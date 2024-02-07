@@ -7,10 +7,7 @@ import static com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorExcep
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import org.apache.olingo.commons.api.data.ComplexValue;
 import org.apache.olingo.commons.api.data.Entity;
@@ -32,6 +29,7 @@ import org.apache.olingo.server.api.uri.UriResource;
 import org.apache.olingo.server.api.uri.UriResourceKind;
 import org.apache.olingo.server.api.uri.UriResourcePartTyped;
 import org.apache.olingo.server.api.uri.queryoption.CountOption;
+import org.apache.olingo.server.api.uri.queryoption.SystemQueryOption;
 import org.apache.olingo.server.api.uri.queryoption.SystemQueryOptionKind;
 
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAnnotatable;
@@ -174,17 +172,27 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
         throw new ODataJPAProcessorException(ODATA_MAXPAGESIZE_NOT_A_NUMBER, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
       }
     }
-    else if(page != null && page.skip() != 0){
+    else if(page != null && page.top() != 0 && page.skip() != 0){
       int newSkipValue = page.skip() + page.top();
       try {
-        return new URI(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?"
-                + SystemQueryOptionKind.SKIP.toString() + "=" + newSkipValue);
+        URI nextLink = new URI(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?");
+        List<SystemQueryOption> systemQueryOptions = new ArrayList<>(page.uriInfo().getSystemQueryOptions());
+        for (int i = 0; i < systemQueryOptions.size(); i++) {
+          SystemQueryOption option = systemQueryOptions.get(i);
+          nextLink = URI.create(nextLink + option.getKind().toString() + "=" +
+                  (option.getKind() == SystemQueryOptionKind.SKIP ? newSkipValue : option.getText()));
+
+          if (i < systemQueryOptions.size() - 1) {
+            nextLink = URI.create(nextLink + "&");
+          }
+        }
+        return nextLink;
       }
       catch (final URISyntaxException e) {
         throw new ODataJPAProcessorException(ODATA_MAXPAGESIZE_NOT_A_NUMBER, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
       }
     }
-    else if(page != null){
+    else if(page != null && page.top() != 0){
       int skipValue = page.top();
       try {
         return new URI(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?"
