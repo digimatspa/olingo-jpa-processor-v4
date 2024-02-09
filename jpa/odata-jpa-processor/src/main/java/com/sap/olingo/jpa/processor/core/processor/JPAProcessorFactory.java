@@ -164,13 +164,16 @@ public final class JPAProcessorFactory {
       throw new ODataException("Errore: la query deve contenere il filtro TileID o geo.intersects");
     }
 
+    Integer preferredPageSize = getPreferredPageSize(headers);
+
     TopOptionImpl topOption = uriInfo.getSystemQueryOptions().stream()
             .filter(option -> option.getKind() == SystemQueryOptionKind.TOP)
             .map(option -> (TopOptionImpl) option)
-            .findFirst()
-            .orElse(new TopOptionImpl().setValue(20));
+            .findFirst().orElse(null);
 
-    topOption.setText(String.valueOf(topOption.getValue()));
+    if(topOption != null){
+      topOption.setText(String.valueOf(topOption.getValue()));
+    }
 
     SkipOptionImpl skipOption = uriInfo.getSystemQueryOptions().stream()
             .filter(option -> option.getKind() == SystemQueryOptionKind.SKIP)
@@ -178,7 +181,12 @@ public final class JPAProcessorFactory {
             .findFirst()
             .orElse(new SkipOptionImpl().setValue(0));
 
-    page = new JPAODataPage(uriInfo, skipOption.getValue(),  topOption.getValue(),null);
+    if(topOption != null){
+      page = new JPAODataPage(uriInfo, skipOption.getValue(),  topOption.getValue(),null);
+    }
+    else if(preferredPageSize != null){
+      page = new JPAODataPage(uriInfo, skipOption.getValue(), preferredPageSize, null);
+    }
     return page;
   }
 
