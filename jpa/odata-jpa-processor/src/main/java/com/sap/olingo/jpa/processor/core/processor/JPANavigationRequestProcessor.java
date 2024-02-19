@@ -175,18 +175,23 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
     else if(page != null && page.top() != 0 && page.skip() != 0){
       int newSkipValue = page.skip() + page.top();
       try {
-        URI nextLink = new URI(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?");
+
+        StringBuilder nextLinkBuilder = new StringBuilder(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?");
         List<SystemQueryOption> systemQueryOptions = new ArrayList<>(page.uriInfo().getSystemQueryOptions());
         for (int i = 0; i < systemQueryOptions.size(); i++) {
           SystemQueryOption option = systemQueryOptions.get(i);
-          nextLink = URI.create(nextLink + option.getKind().toString() + "=" +
-                  (option.getKind() == SystemQueryOptionKind.SKIP ? newSkipValue : option.getText()));
+          nextLinkBuilder.append(option.getKind().toString()).append("=")
+                  .append(option.getKind() == SystemQueryOptionKind.SKIP ? newSkipValue : option.getText());
+
+          nextLinkBuilder = new StringBuilder(nextLinkBuilder.toString().replaceAll("'", "%27"));
+          nextLinkBuilder = new StringBuilder(nextLinkBuilder.toString().replaceAll(" ", "%20"));
 
           if (i < systemQueryOptions.size() - 1) {
-            nextLink = URI.create(nextLink + "&");
+            nextLinkBuilder.append("&");
           }
         }
-        return nextLink;
+
+          return new URI(nextLinkBuilder.toString());
       }
       catch (final URISyntaxException e) {
         throw new ODataJPAProcessorException(ODATA_MAXPAGESIZE_NOT_A_NUMBER, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
