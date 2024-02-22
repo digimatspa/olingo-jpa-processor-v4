@@ -51,9 +51,10 @@ public class Olingo2Teiid {
             org.locationtech.jts.geom.LineString result =
                     GeometryUtils.GEOMETRY_FACTORY.createLineString(convertLineStringToPoints(lineString));
             return result;
-        } else if (geospatial instanceof Polygon) {
-            Polygon polygon = (Polygon) geospatial;
-            return convertPolygon(polygon);
+        } else if (geospatial instanceof Polygon polygon) {
+            org.locationtech.jts.geom.Polygon newPolygon = convertPolygon(polygon);
+            newPolygon.setSRID(Integer.parseInt(geospatial.getSrid().toString()));
+            return newPolygon;
         } else if (geospatial instanceof MultiPoint) {
             MultiPoint multipoint = (MultiPoint)geospatial;
             Coordinate[] coords = convertLineStringToPoints(multipoint);
