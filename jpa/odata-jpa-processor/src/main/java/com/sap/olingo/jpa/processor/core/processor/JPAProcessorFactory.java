@@ -148,22 +148,6 @@ public final class JPAProcessorFactory {
       }
     }
 
-    boolean hasTileIDFilter = uriInfo.getFilterOption() != null &&
-            uriInfo.getFilterOption().getExpression() != null &&
-            uriInfo.getFilterOption().getExpression().toString().contains("TileID");
-
-    boolean containsGeoIntersectsFilter = uriInfo.getFilterOption() != null &&
-            uriInfo.getFilterOption().getExpression() != null &&
-            uriInfo.getFilterOption().getExpression().toString().contains("geo.intersects");
-
-    boolean hasRequiredFilters = uriInfo.getFilterOption() != null &&
-            (hasTileIDFilter || containsGeoIntersectsFilter);
-
-    // Verifica la presenza di filtri necessari
-    if (uriInfo.getFilterOption() != null && !hasRequiredFilters) {
-      throw new ODataException("Errore: la query deve contenere il filtro TileID o geo.intersects");
-    }
-
     Integer preferredPageSize = getPreferredPageSize(headers);
 
     TopOptionImpl topOption = uriInfo.getSystemQueryOptions().stream()
