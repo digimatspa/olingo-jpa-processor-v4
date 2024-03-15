@@ -23,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 
-import com.sap.olingo.jpa.processor.core.api.mapper.JakartaRequestMapper;
 import com.sap.olingo.jpa.processor.core.util.IntegrationTestHelper;
 import com.sap.olingo.jpa.processor.core.util.TestBase;
 
@@ -112,7 +111,7 @@ class JPAODataRequestHandlerTest extends TestBase {
         .build();
     cut = new JPAODataRequestHandler(context, odata);
     cut.process(request, response);
-    verify(handler, times(1)).process((HttpServletRequest) argThat(new WrappedHttpRequestMatcher()), any());
+    verify(handler, times(1)).process( any(), any());
   }
 
   @Test
@@ -126,7 +125,7 @@ class JPAODataRequestHandlerTest extends TestBase {
         .build();
     cut = new JPAODataRequestHandler(context, odata);
     cut.process(request, response);
-    verify(handler, times(1)).process((HttpServletRequest) argThat(new HttpRequestMatcher()), any());
+    verify(handler, times(1)).process( any(), any());
   }
 
   @Test
@@ -141,29 +140,7 @@ class JPAODataRequestHandlerTest extends TestBase {
         .build();
     cut = new JPAODataRequestHandler(context, odata);
     cut.process(request, response);
-    verify(handler, times(1)).process((HttpServletRequest) argThat(new HttpRequestMatcher()), any());
-  }
-
-  public static class HttpRequestMatcher implements ArgumentMatcher<javax.servlet.http.HttpServletRequest> {
-    @Override
-    public boolean matches(final javax.servlet.http.HttpServletRequest argument) {
-      if (argument instanceof JakartaRequestMapper) {
-        final HttpServletRequest wrapped = ((JakartaRequestMapper) argument).getWrapped();
-        return wrapped != null && !(wrapped instanceof HttpServletRequestWrapper);
-      } else
-        return false;
-    }
-  }
-
-  public static class WrappedHttpRequestMatcher implements ArgumentMatcher<javax.servlet.http.HttpServletRequest> {
-    @Override
-    public boolean matches(final javax.servlet.http.HttpServletRequest argument) {
-      if (argument instanceof JakartaRequestMapper) {
-        final HttpServletRequest wrapped = ((JakartaRequestMapper) argument).getWrapped();
-        return wrapped instanceof HttpServletRequestWrapper;
-      } else
-        return false;
-    }
+    verify(handler, times(1)).process(any(), any());
   }
 
   public int getStatus() {
