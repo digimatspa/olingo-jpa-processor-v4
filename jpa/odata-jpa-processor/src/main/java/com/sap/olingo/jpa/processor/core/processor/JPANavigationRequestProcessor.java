@@ -104,7 +104,7 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
       }
       // Set Next Link
       try{
-        entityCollection.setNext(new URI(request.getRawBaseUri() + this.buildNextLink(page)));
+        entityCollection.setNext(new URI(request.getRawBaseUri() + "/" + this.buildNextLink(page)));
       } catch (URISyntaxException e) {
           throw new RuntimeException(e);
       }
@@ -180,7 +180,7 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
       int newSkipValue = page.skip() + page.top();
       try {
 
-        StringBuilder nextLinkBuilder = new StringBuilder("/" + Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?");
+        StringBuilder nextLinkBuilder = new StringBuilder(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?");
         List<SystemQueryOption> systemQueryOptions = new ArrayList<>(page.uriInfo().getSystemQueryOptions());
         for (int i = 0; i < systemQueryOptions.size(); i++) {
           SystemQueryOption option = systemQueryOptions.get(i);
@@ -205,7 +205,7 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
       int skipValue = page.top();
       try {
 
-        StringBuilder nextLinkBuilder = new StringBuilder("/" + Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?");
+        StringBuilder nextLinkBuilder = new StringBuilder(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?");
         List<SystemQueryOption> systemQueryOptions = new ArrayList<>(page.uriInfo().getSystemQueryOptions());
         for (int i = 0; i < systemQueryOptions.size(); i++) {
           SystemQueryOption option = systemQueryOptions.get(i);

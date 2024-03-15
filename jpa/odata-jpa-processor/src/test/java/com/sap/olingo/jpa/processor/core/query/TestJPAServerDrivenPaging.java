@@ -95,7 +95,9 @@ class TestJPAServerDrivenPaging extends TestBase {
     final IntegrationTestHelper helper = new IntegrationTestHelper(emf, "Organizations?$orderby=ID desc", provider);
     helper.assertStatus(200);
     assertEquals(5, helper.getValues().size());
-    assertEquals("Organizations?$skiptoken='Hugo'", helper.getValue().get("@odata.nextLink").asText());
+    String nextLink =  helper.getValue().get("@odata.nextLink").asText();
+    assertEquals("Organizations?$skiptoken='Hugo'",
+            nextLink.substring(nextLink.lastIndexOf("/")+1));
   }
 
   @Test
@@ -108,7 +110,24 @@ class TestJPAServerDrivenPaging extends TestBase {
     final IntegrationTestHelper helper = new IntegrationTestHelper(emf, "Organizations?$orderby=ID desc", provider);
     helper.assertStatus(200);
     assertEquals(5, helper.getValues().size());
-    assertEquals("Organizations?$skiptoken=123456789", helper.getValue().get("@odata.nextLink").asText());
+    String nextLink =  helper.getValue().get("@odata.nextLink").asText();
+    assertEquals("Organizations?$skiptoken=123456789",
+            nextLink.substring(nextLink.lastIndexOf("/")+1));
+  }
+
+  @Test
+  void testReturnsNextLinkWithoutSkipToken() throws IOException, ODataException {
+
+    final JPAODataPagingProvider provider = mock(JPAODataPagingProvider.class);
+    when(provider.getFirstPage(any(), any(), any(), any())).thenAnswer(i -> new JPAODataPage((UriInfo) i
+            .getArguments()[0], 2, 3, Integer.valueOf(123456789)));
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf, "Organizations?$orderby=ID desc&$top=3&$skip=2", provider);
+    helper.assertStatus(200);
+    assertEquals(3, helper.getValues().size());
+    String nextLink =  helper.getValue().get("@odata.nextLink").asText();
+    assertEquals("Organizations?$orderby=ID%20desc&$skip=5&$top=3",
+            nextLink.substring(nextLink.lastIndexOf("/")+1));
   }
 
   @Test
