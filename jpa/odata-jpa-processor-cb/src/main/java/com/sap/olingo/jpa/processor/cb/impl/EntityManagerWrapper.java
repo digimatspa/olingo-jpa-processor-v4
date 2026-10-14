@@ -4,20 +4,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import jakarta.persistence.EntityExistsException;
-import jakarta.persistence.EntityGraph;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.EntityTransaction;
-import jakarta.persistence.FlushModeType;
-import jakarta.persistence.LockModeType;
-import jakarta.persistence.PersistenceException;
-import jakarta.persistence.Query;
-import jakarta.persistence.StoredProcedureQuery;
-import jakarta.persistence.TransactionRequiredException;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaDelete;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.CriteriaSelect;
 import jakarta.persistence.criteria.CriteriaUpdate;
 import jakarta.persistence.metamodel.Metamodel;
 
@@ -150,8 +140,23 @@ public class EntityManagerWrapper implements EntityManager { // NOSONAR
   }
 
   @Override
+  public <T> T find(Class<T> aClass, Object o, FindOption... findOptions) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <T> T find(EntityGraph<T> entityGraph, Object o, FindOption... findOptions) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public <T> T getReference(final Class<T> entityClass, final Object primaryKey) {
     return em.getReference(entityClass, primaryKey);
+  }
+
+  @Override
+  public <T> T getReference(T t) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -180,6 +185,11 @@ public class EntityManagerWrapper implements EntityManager { // NOSONAR
   }
 
   @Override
+  public void lock(Object o, LockModeType lockModeType, LockOption... lockOptions) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void refresh(final Object entity) {
     em.refresh(entity);
   }
@@ -197,6 +207,11 @@ public class EntityManagerWrapper implements EntityManager { // NOSONAR
   @Override
   public void refresh(final Object entity, final LockModeType lockMode, final Map<String, Object> properties) {
     em.refresh(entity, lockMode, properties);
+  }
+
+  @Override
+  public void refresh(Object o, RefreshOption... refreshOptions) {
+
   }
 
   /**
@@ -255,6 +270,26 @@ public class EntityManagerWrapper implements EntityManager { // NOSONAR
     return em.getLockMode(entity);
   }
 
+  @Override
+  public void setCacheRetrieveMode(CacheRetrieveMode cacheRetrieveMode) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setCacheStoreMode(CacheStoreMode cacheStoreMode) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public CacheRetrieveMode getCacheRetrieveMode() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public CacheStoreMode getCacheStoreMode() {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Set an entity manager property or hint.
    * If a vendor-specific property or hint is not recognized, it is
@@ -308,6 +343,11 @@ public class EntityManagerWrapper implements EntityManager { // NOSONAR
   public <T> TypedQuery<T> createQuery(final CriteriaQuery<T> criteriaQuery) {
     final var builder = getCriteriaBuilder();
     return new TypedQueryImpl<>(criteriaQuery, this, (ParameterBuffer) builder.getParameterBuffer());
+  }
+
+  @Override
+  public <T> TypedQuery<T> createQuery(CriteriaSelect<T> criteriaSelect) {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -391,6 +431,11 @@ public class EntityManagerWrapper implements EntityManager { // NOSONAR
   public <T> TypedQuery<T> createNamedQuery(final String name, final Class<T> resultClass) {
     LOG.trace("Create query: " + name);
     return em.createNamedQuery(name, resultClass);
+  }
+
+  @Override
+  public <T> TypedQuery<T> createQuery(TypedQueryReference<T> typedQueryReference) {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -746,5 +791,15 @@ public class EntityManagerWrapper implements EntityManager { // NOSONAR
   @Override
   public <T> List<EntityGraph<? super T>> getEntityGraphs(final Class<T> entityClass) {
     return em.getEntityGraphs(entityClass);
+  }
+
+  @Override
+  public <C> void runWithConnection(ConnectionConsumer<C> connectionConsumer) {
+
+  }
+
+  @Override
+  public <C, T> T callWithConnection(ConnectionFunction<C, T> connectionFunction) {
+    throw new UnsupportedOperationException();
   }
 }

@@ -34,6 +34,13 @@ class TestTopSkipCountOnDerby {
 
   @BeforeAll
   static void setupClass() {
+    try {
+      Class.forName("org.flywaydb.database.derby.DerbyDatabaseType");
+//      Class.forName("org.apache.derby.jdbc.EmbeddedDriver");
+      Class.forName("org.apache.derby.iapi.jdbc.AutoloadedDriver");
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Impossibile caricare il plugin Flyway per Derby. Verifica le dipendenze nel POM!", e);
+    }
     dataSource = DataSourceHelper.createDataSource(DataSourceHelper.DB_DERBY);
     emf = JPAEntityManagerFactory.getEntityManagerFactory(PUNIT_NAME, dataSource);
   }

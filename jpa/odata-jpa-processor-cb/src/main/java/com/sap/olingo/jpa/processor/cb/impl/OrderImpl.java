@@ -3,6 +3,7 @@ package com.sap.olingo.jpa.processor.cb.impl;
 import java.util.Optional;
 
 import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Nulls;
 import jakarta.persistence.criteria.Order;
 
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
@@ -59,6 +60,11 @@ class OrderImpl implements Order, SqlConvertible {
   @Override
   public boolean isAscending() {
     return isAscending;
+  }
+
+  @Override
+  public Nulls getNullPrecedence() {
+    throw new UnsupportedOperationException();
   }
 
   @Override

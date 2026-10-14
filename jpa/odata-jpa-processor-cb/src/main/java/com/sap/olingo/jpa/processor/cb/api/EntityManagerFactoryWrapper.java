@@ -1,14 +1,10 @@
 package com.sap.olingo.jpa.processor.cb.api;
 
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
-import jakarta.persistence.Cache;
-import jakarta.persistence.EntityGraph;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.PersistenceUnitUtil;
-import jakarta.persistence.Query;
-import jakarta.persistence.SynchronizationType;
+import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.metamodel.Metamodel;
 
@@ -73,6 +69,11 @@ public final class EntityManagerFactoryWrapper implements EntityManagerFactory {
   }
 
   @Override
+  public String getName() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public Map<String, Object> getProperties() {
     return emf.getProperties();
   }
@@ -88,6 +89,16 @@ public final class EntityManagerFactoryWrapper implements EntityManagerFactory {
   }
 
   @Override
+  public PersistenceUnitTransactionType getTransactionType() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public SchemaManager getSchemaManager() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void addNamedQuery(final String name, final Query query) {
     emf.addNamedQuery(name, query);
   }
@@ -100,6 +111,26 @@ public final class EntityManagerFactoryWrapper implements EntityManagerFactory {
   @Override
   public <T> void addNamedEntityGraph(final String graphName, final EntityGraph<T> entityGraph) {
     emf.addNamedEntityGraph(graphName, entityGraph);
+  }
+
+  @Override
+  public <R> Map<String, TypedQueryReference<R>> getNamedQueries(Class<R> aClass) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <E> Map<String, EntityGraph<? extends E>> getNamedEntityGraphs(Class<E> aClass) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void runInTransaction(Consumer<EntityManager> consumer) {
+
+  }
+
+  @Override
+  public <R> R callInTransaction(Function<EntityManager, R> function) {
+    throw new UnsupportedOperationException();
   }
 
 }

@@ -138,6 +138,31 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
     public BooleanOperator getOperator() {
       return Predicate.BooleanOperator.AND;
     }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class BetweenExpressionPredicate extends PredicateImpl {
@@ -167,6 +192,31 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
     public BooleanOperator getOperator() {
       return null;
     }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class BinaryExpressionPredicate extends PredicateImpl {
@@ -190,6 +240,31 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
     @Override
     public BooleanOperator getOperator() {
       return null;
+    }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
     }
 
     enum Operation {
@@ -267,6 +342,31 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
     public BooleanOperator getOperator() {
       return null;
     }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class NotPredicate extends PredicateImpl {
@@ -296,6 +396,31 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
     public boolean isNegated() {
       return true;
     }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class NullPredicate extends PredicateImpl {
@@ -317,6 +442,31 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
     public BooleanOperator getOperator() {
       return null;
     }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class OrPredicate extends BooleanPredicate {
@@ -333,6 +483,31 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
     @Override
     public BooleanOperator getOperator() {
       return Predicate.BooleanOperator.OR;
+    }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
     }
   }
 
@@ -423,6 +598,30 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
       return paths.isEmpty() ? null : (Expression<X>) paths.getFirst();
     }
 
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class SubQuery extends PredicateImpl {
@@ -447,5 +646,29 @@ abstract class PredicateImpl extends ExpressionImpl<Boolean> implements Predicat
       return null;
     }
 
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 }

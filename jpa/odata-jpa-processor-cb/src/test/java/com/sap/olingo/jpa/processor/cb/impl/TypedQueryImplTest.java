@@ -194,8 +194,9 @@ class TypedQueryImplTest extends BuilderBaseTest {
 
   @Test
   void testGetMaxResults() {
-    cut.getMaxResults();
-    verify(cq).getMaxResults();
+    org.mockito.Mockito.when(cq.getMaxResults()).thenReturn(Integer.MAX_VALUE);
+    int result = cut.getMaxResults();
+    assertEquals(Integer.MAX_VALUE, result);
   }
 
   @Test

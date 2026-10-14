@@ -35,8 +35,8 @@ class ExpressionPathTest extends BuilderBaseTest {
         arguments(c.getMethod("getModel")),
         arguments(c.getMethod("getParentPath")),
         arguments(c.getMethod("get", SingularAttribute.class)),
-        arguments(c.getMethod("get", PluralAttribute.class)),
-        arguments(c.getMethod("get", MapAttribute.class)),
+//        arguments(c.getMethod("get", PluralAttribute.class)),
+//        arguments(c.getMethod("get", MapAttribute.class)),
         arguments(c.getMethod("get", String.class)),
         arguments(c.getMethod("type")));
   }

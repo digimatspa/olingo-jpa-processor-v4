@@ -21,12 +21,7 @@ import jakarta.persistence.criteria.ListJoin;
 import jakarta.persistence.criteria.MapJoin;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.SetJoin;
-import jakarta.persistence.metamodel.CollectionAttribute;
-import jakarta.persistence.metamodel.ListAttribute;
-import jakarta.persistence.metamodel.MapAttribute;
-import jakarta.persistence.metamodel.PluralAttribute;
-import jakarta.persistence.metamodel.SetAttribute;
-import jakarta.persistence.metamodel.SingularAttribute;
+import jakarta.persistence.metamodel.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -243,6 +238,26 @@ class FromImpl<Z, X> extends PathImpl<X> implements From<Z, X> {
   @Override
   public From<Z, X> getCorrelationParent() {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public <Y> Join<X, Y> join(Class<Y> aClass) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <Y> Join<X, Y> join(Class<Y> aClass, JoinType joinType) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <Y> Join<X, Y> join(EntityType<Y> entityType) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <Y> Join<X, Y> join(EntityType<Y> entityType, JoinType joinType) {
+    throw new UnsupportedOperationException();
   }
 
   /**

@@ -11,7 +11,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.source>17</project.build.source>
+        <project.build.source>25</project.build.source>
     </properties>
 
     <modules>

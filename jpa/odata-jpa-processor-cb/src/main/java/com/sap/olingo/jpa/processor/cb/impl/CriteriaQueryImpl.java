@@ -15,13 +15,7 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.Order;
-import jakarta.persistence.criteria.ParameterExpression;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import jakarta.persistence.criteria.Predicate.BooleanOperator;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Selection;
@@ -280,6 +274,11 @@ class CriteriaQueryImpl<T> extends Pageable implements ProcessorCriteriaQuery<T>
   }
 
   @Override
+  public CriteriaQuery<T> having(List<Predicate> list) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public boolean isDistinct() {
     return distinct;
   }
@@ -338,7 +337,6 @@ class CriteriaQueryImpl<T> extends Pageable implements ProcessorCriteriaQuery<T>
    * in the specified order.
    * </ul>
    *
-   * @param selections selection items corresponding to the
    * results to be returned by the query
    * @return the modified query
    * @throws IllegalArgumentException if a selection item is
@@ -399,6 +397,11 @@ class CriteriaQueryImpl<T> extends Pageable implements ProcessorCriteriaQuery<T>
     return new SubqueryImpl<>(type, this, aliasBuilder, cb, sqlPattern, sd);
   }
 
+  @Override
+  public <U> Subquery<U> subquery(EntityType<U> entityType) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Modify the query to restrict the query result according
    * to the specified boolean expression.
@@ -428,6 +431,11 @@ class CriteriaQueryImpl<T> extends Pageable implements ProcessorCriteriaQuery<T>
   @Override
   public CriteriaQuery<T> where(final Predicate... restrictions) {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public CriteriaQuery<T> where(List<Predicate> list) {
+    throw new UnsupportedOperationException();
   }
 
   JPAServiceDocument getServiceDocument() {

@@ -37,6 +37,13 @@ class CriteriaBuilderDerbyTest extends CriteriaBuilderOverallTest {
 
   @BeforeAll
   static void classSetup() throws ODataException {
+    try {
+      Class.forName("org.flywaydb.database.derby.DerbyDatabaseType");
+      Class.forName("org.apache.derby.jdbc.EmbeddedDriver");
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Impossibile caricare il plugin Flyway per Derby. Verifica le dipendenze nel POM!", e);
+    }
+
     ds = DataSourceHelper.createDataSource(DataSourceHelper.DB_DERBY);
     emf = JPAEntityManagerFactory.getEntityManagerFactory(PUNIT_NAME, ds);
     edmProvider = new JPAEdmProvider(PUNIT_NAME, emf, null, enumPackages);

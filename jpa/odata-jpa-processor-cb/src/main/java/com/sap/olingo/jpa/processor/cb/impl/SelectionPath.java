@@ -8,6 +8,7 @@ import javax.annotation.Nonnull;
 
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.metamodel.Bindable;
 import jakarta.persistence.metamodel.MapAttribute;
 import jakarta.persistence.metamodel.PluralAttribute;
@@ -46,13 +47,13 @@ class SelectionPath<X> extends ExpressionImpl<X> implements Path<X> {
   }
 
   @Override
-  public <E, C extends Collection<E>> Expression<C> get(final PluralAttribute<X, C, E> attribute) {
-    throw new NotImplementedException();
+  public <E, C extends Collection<E>> Expression<C> get(PluralAttribute<? super X, C, E> pluralAttribute) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public <K, V, M extends Map<K, V>> Expression<M> get(final MapAttribute<X, K, V> attribute) {
-    throw new NotImplementedException();
+  public <K, V, M extends Map<K, V>> Expression<M> get(MapAttribute<? super X, K, V> mapAttribute) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -73,5 +74,30 @@ class SelectionPath<X> extends ExpressionImpl<X> implements Path<X> {
   @Override
   public Expression<Class<? extends X>> type() {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public Predicate equalTo(Expression<?> expression) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Predicate equalTo(Object o) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Predicate notEqualTo(Expression<?> expression) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Predicate notEqualTo(Object o) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <X1> Expression<X1> cast(Class<X1> aClass) {
+    throw new UnsupportedOperationException();
   }
 }

@@ -76,6 +76,11 @@ public class EdmNavigationPropertyDouble implements EdmNavigationProperty {
     return (EdmOnDelete) failWithNull();
   }
 
+  @Override
+  public boolean isKeyAsSegmentAllowed() {
+    throw new UnsupportedOperationException();
+  }
+
   private final Object failWithNull() {
     fail();
     return null;

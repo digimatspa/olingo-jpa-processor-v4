@@ -194,6 +194,31 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
     SqlConvertible getExpression() {
       return expression;
     }
+    
+     @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class ArithmeticExpression<N extends Number> extends ExpressionImpl<N> {
@@ -220,6 +245,30 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
           .append(CLOSING_BRACKET);
     }
 
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class CoalesceExpression<T> extends ExpressionImpl<T> implements Coalesce<T> {
@@ -250,6 +299,31 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
     public Coalesce<T> value(@Nonnull final T value) {
       throw new NotImplementedException();
     }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class ConcatExpression extends ExpressionImpl<String> {
@@ -258,7 +332,7 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
     private final ProcessorSqlPatternProvider sqlPattern;
 
     ConcatExpression(@Nonnull final Expression<String> first, @Nonnull final Expression<String> second,
-        final ProcessorSqlPatternProvider sqlPattern) {
+                     final ProcessorSqlPatternProvider sqlPattern) {
       this.first = (SqlConvertible) Objects.requireNonNull(first);
       this.second = (SqlConvertible) Objects.requireNonNull(second);
       this.sqlPattern = sqlPattern;
@@ -270,23 +344,49 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
       final var concatenateClause = sqlPattern.getConcatenatePattern();
       if (concatenateClause instanceof final ProcessorSqlFunction function) {
         statement.append(function.function())
-            .append(OPENING_BRACKET);
+                .append(OPENING_BRACKET);
         first.asSQL(statement)
-            .append(function.parameters().get(1).keyword());
+                .append(function.parameters().get(1).keyword());
         second.asSQL(statement);
         return statement.append(CLOSING_BRACKET);
       } else {
         final var operation = (ProcessorSqlOperator) concatenateClause;
         statement.append(OPENING_BRACKET);
         first.asSQL(statement)
-            .append(operation.parameters().get(1).keyword());
+                .append(operation.parameters().get(1).keyword());
         second.asSQL(statement);
         return statement.append(CLOSING_BRACKET);
       }
+
+
+    }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
     }
   }
-
-  static class DistinctExpression<T> extends ExpressionImpl<T> {
+    static class DistinctExpression<T> extends ExpressionImpl<T> {
     private final SqlConvertible left;
 
     DistinctExpression(@Nonnull final Expression<?> expression) {
@@ -311,6 +411,31 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
 
       }
       return left.asSQL(statement.append(SqlKeyWords.DISTINCT).append(OPENING_BRACKET)).append(CLOSING_BRACKET);
+    }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
     }
   }
 
@@ -338,6 +463,30 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
       return type;
     }
 
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class LocateExpression extends ExpressionImpl<Integer> {
@@ -379,6 +528,30 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
       statement.append(parameterValues.stream().collect(Collectors.joining()));
       return statement.append(CLOSING_BRACKET);
     }
+	@Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class LengthExpression extends ExpressionImpl<Integer> {
@@ -398,6 +571,30 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
       return left.asSQL(statement).append(CLOSING_BRACKET);
     }
 
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static final class ParameterExpression<T, S> extends ExpressionImpl<T> implements Parameter<T> {
@@ -482,6 +679,31 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
     public String toString() {
       return "ParameterExpression [jpaPath=" + jpaPath + ", value=" + value + ", index=" + index + "]";
     }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static final class SubQuery<X> extends ExpressionImpl<X> {
@@ -502,6 +724,30 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
       return query.asSQL(statement).append(CLOSING_BRACKET);
     }
 
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X1> Expression<X1> cast(Class<X1> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class SubstringExpression extends ExpressionImpl<String> {
@@ -511,7 +757,7 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
     private final ProcessorSqlPatternProvider sqlPattern;
 
     SubstringExpression(@Nonnull final Expression<String> expression, @Nonnull final Expression<Integer> from,
-        final Expression<Integer> length, @Nonnull final ProcessorSqlPatternProvider sqlPattern) {
+                        final Expression<Integer> length, @Nonnull final ProcessorSqlPatternProvider sqlPattern) {
       this.expression = (SqlConvertible) Objects.requireNonNull(expression);
       this.from = (SqlConvertible) Objects.requireNonNull(from);
       this.length = Optional.ofNullable((SqlConvertible) length);
@@ -522,27 +768,53 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
     public StringBuilder asSQL(final StringBuilder statement) {
       final var function = sqlPattern.getSubStringPattern();
       checkParameterCount(function.parameters().size(), length.isPresent() ? 3 : 2,
-          SqlStringFunctions.SUBSTRING.toString());
+              SqlStringFunctions.SUBSTRING.toString());
       final List<CharSequence> parameterValues = new ArrayList<>(3);
       statement.append(function.function())
-          .append(OPENING_BRACKET);
+              .append(OPENING_BRACKET);
 
       for (final var parameter : function.parameters()) {
         switch (parameter.parameter()) {
           case ProcessorSqlPatternProvider.VALUE_PLACEHOLDER -> addParameter(parameter, parameterValues, expression);
           case ProcessorSqlPatternProvider.START_PLACEHOLDER -> addParameter(parameter, parameterValues, from);
           case ProcessorSqlPatternProvider.LENGTH_PLACEHOLDER -> length.ifPresent(f -> addParameter(parameter,
-              parameterValues, f));
+                  parameterValues, f));
           default -> throw new IllegalArgumentException(parameter.parameter()
-              + " not supported for function SUBSTRING");
+                  + " not supported for function SUBSTRING");
         }
       }
       statement.append(parameterValues.stream().collect(Collectors.joining()));
       return statement.append(CLOSING_BRACKET);
+
+
+    }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
     }
   }
-
-  static class TimeExpression<T> extends ExpressionImpl<T> {
+    static class TimeExpression<T> extends ExpressionImpl<T> {
 
     private final SqlTimeFunctions function;
 
@@ -555,6 +827,30 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
       return statement.append(function);
     }
 
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class UnaryFunctionalExpression<T> extends ExpressionImpl<T> {
@@ -572,6 +868,30 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
       return left.asSQL(statement).append(CLOSING_BRACKET);
     }
 
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class WindowFunctionExpression<T> extends ExpressionImpl<T> implements WindowFunction<T> {
@@ -637,6 +957,31 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
     public Path<T> asPath(final String tableAlias) {
       return new ExpressionPath<>(alias, tableAlias);
     }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class ExpressionPath<T> extends ExpressionImpl<T> implements Path<T> {
@@ -680,14 +1025,15 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
     }
 
     @Override
-    public <E, C extends Collection<E>> Expression<C> get(final PluralAttribute<T, C, E> collection) {
-      throw new NotImplementedException();
+    public <E, C extends Collection<E>> Expression<C> get(PluralAttribute<? super T, C, E> pluralAttribute) {
+      throw new UnsupportedOperationException();
     }
 
     @Override
-    public <K, V, M extends Map<K, V>> Expression<M> get(final MapAttribute<T, K, V> map) {
-      throw new NotImplementedException();
+    public <K, V, M extends Map<K, V>> Expression<M> get(MapAttribute<? super T, K, V> mapAttribute) {
+      throw new UnsupportedOperationException();
     }
+
 
     @Override
     public Expression<Class<? extends T>> type() {
@@ -697,6 +1043,31 @@ abstract class ExpressionImpl<T> implements Expression<T>, SqlConvertible {
     @Override
     public <Y> Path<Y> get(final String attributeName) {
       throw new NotImplementedException();
+    }
+
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
     }
   }
 }

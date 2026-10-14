@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 
+import jakarta.persistence.criteria.Predicate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -128,5 +129,29 @@ class ExpressionImplTest {
       return statement;
     }
 
+    @Override
+    public Predicate equalTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate equalTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Expression<?> expression) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Predicate notEqualTo(Object o) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <X> Expression<X> cast(Class<X> aClass) {
+      throw new UnsupportedOperationException();
+    }
   }
 }

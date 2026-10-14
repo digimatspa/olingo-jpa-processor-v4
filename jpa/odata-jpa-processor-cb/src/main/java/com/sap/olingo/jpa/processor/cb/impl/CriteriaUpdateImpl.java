@@ -3,16 +3,11 @@ package com.sap.olingo.jpa.processor.cb.impl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import javax.annotation.Nonnull;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaUpdate;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.*;
 import jakarta.persistence.metamodel.EntityType;
 import jakarta.persistence.metamodel.SingularAttribute;
 
@@ -71,6 +66,11 @@ class CriteriaUpdateImpl<T> implements CriteriaUpdate<T>, SqlConvertible {
     return new SubqueryImpl<>(type, this, aliasBuilder, cb, sqlPattern, sd);
   }
 
+  @Override
+  public <U> Subquery<U> subquery(EntityType<U> entityType) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Return the predicate that corresponds to the where clause
    * restriction(s), or null if no restrictions have been
@@ -80,6 +80,11 @@ class CriteriaUpdateImpl<T> implements CriteriaUpdate<T>, SqlConvertible {
   @Override
   public Predicate getRestriction() {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public Set<ParameterExpression<?>> getParameters() {
+    return Set.of();
   }
 
   /**

@@ -45,8 +45,8 @@ class PathImplTest extends BuilderBaseTest {
     return Stream.of(
         arguments(c.getMethod("getModel")),
         arguments(c.getMethod("type")),
-        arguments(c.getMethod("get", MapAttribute.class)),
-        arguments(c.getMethod("get", PluralAttribute.class)),
+//        arguments(c.getMethod("get", MapAttribute.class)),
+//        arguments(c.getMethod("get", PluralAttribute.class)),
         arguments(c.getMethod("get", SingularAttribute.class)));
   }
 

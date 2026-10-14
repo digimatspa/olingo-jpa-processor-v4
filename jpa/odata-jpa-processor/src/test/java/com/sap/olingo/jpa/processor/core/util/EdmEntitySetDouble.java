@@ -73,6 +73,11 @@ public class EdmEntitySetDouble implements EdmEntitySet {
   }
 
   @Override
+  public boolean isKeyAsSegmentAllowed() {
+    return false;
+  }
+
+  @Override
   public EdmMapping getMapping() {
     fail();
     return null;

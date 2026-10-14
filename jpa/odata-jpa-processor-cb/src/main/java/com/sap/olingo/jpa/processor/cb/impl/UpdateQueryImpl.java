@@ -2,11 +2,7 @@ package com.sap.olingo.jpa.processor.cb.impl;
 
 import java.util.List;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceException;
-import jakarta.persistence.Query;
-import jakarta.persistence.QueryTimeoutException;
-import jakarta.persistence.TransactionRequiredException;
+import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaUpdate;
 
 class UpdateQueryImpl extends AbstractQueryImpl {
@@ -34,6 +30,11 @@ class UpdateQueryImpl extends AbstractQueryImpl {
   @Override
   public Object getSingleResult() {
     throw new IllegalStateException();
+  }
+
+  @Override
+  public Object getSingleResultOrNull() {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -88,6 +89,36 @@ class UpdateQueryImpl extends AbstractQueryImpl {
    */
   @Override
   public int getFirstResult() {
+    return 0;
+  }
+
+  @Override
+  public Query setCacheRetrieveMode(CacheRetrieveMode cacheRetrieveMode) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Query setCacheStoreMode(CacheStoreMode cacheStoreMode) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public CacheRetrieveMode getCacheRetrieveMode() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public CacheStoreMode getCacheStoreMode() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Query setTimeout(Integer integer) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Integer getTimeout() {
     return 0;
   }
 

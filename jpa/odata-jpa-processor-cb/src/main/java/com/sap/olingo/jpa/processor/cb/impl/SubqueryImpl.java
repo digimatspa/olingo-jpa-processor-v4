@@ -12,21 +12,7 @@ import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import jakarta.persistence.criteria.AbstractQuery;
-import jakarta.persistence.criteria.CollectionJoin;
-import jakarta.persistence.criteria.CommonAbstractCriteria;
-import jakarta.persistence.criteria.CompoundSelection;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.ListJoin;
-import jakarta.persistence.criteria.MapJoin;
-import jakarta.persistence.criteria.Order;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Selection;
-import jakarta.persistence.criteria.SetJoin;
-import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.*;
 import jakarta.persistence.metamodel.EntityType;
 
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
@@ -79,6 +65,11 @@ class SubqueryImpl<T> extends Pageable implements ProcessorSubquery<T>, SqlConve
   }
 
   @Override
+  public Subquery<T> where(List<Predicate> list) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public Subquery<T> groupBy(@Nonnull final Expression<?>... grouping) {
     inner.groupBy(grouping);
     return this;
@@ -100,6 +91,11 @@ class SubqueryImpl<T> extends Pageable implements ProcessorSubquery<T>, SqlConve
   public Subquery<T> having(@Nonnull final Predicate... restrictions) {
     inner.having(restrictions);
     return this;
+  }
+
+  @Override
+  public Subquery<T> having(List<Predicate> list) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -217,6 +213,11 @@ class SubqueryImpl<T> extends Pageable implements ProcessorSubquery<T>, SqlConve
     return inner.subquery(type);
   }
 
+  @Override
+  public <U> Subquery<U> subquery(EntityType<U> entityType) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Return the predicate that corresponds to the where clause
    * restriction(s), or null if no restrictions have been
@@ -229,6 +230,11 @@ class SubqueryImpl<T> extends Pageable implements ProcessorSubquery<T>, SqlConve
   }
 
   @Override
+  public Set<ParameterExpression<?>> getParameters() {
+    return Set.of();
+  }
+
+  @Override
   public Predicate isNull() {
     throw new NotImplementedException();
   }
@@ -236,6 +242,26 @@ class SubqueryImpl<T> extends Pageable implements ProcessorSubquery<T>, SqlConve
   @Override
   public Predicate isNotNull() {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public Predicate equalTo(Expression<?> expression) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Predicate equalTo(Object o) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Predicate notEqualTo(Expression<?> expression) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Predicate notEqualTo(Object o) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -261,6 +287,11 @@ class SubqueryImpl<T> extends Pageable implements ProcessorSubquery<T>, SqlConve
   @Override
   public <X> Expression<X> as(@Nonnull final Class<X> type) {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public <X> Expression<X> cast(Class<X> aClass) {
+    throw new UnsupportedOperationException();
   }
 
   @Override

@@ -7,23 +7,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.FlushModeType;
-import jakarta.persistence.LockModeType;
-import jakarta.persistence.LockTimeoutException;
-import jakarta.persistence.NoResultException;
-import jakarta.persistence.NonUniqueResultException;
-import jakarta.persistence.Parameter;
-import jakarta.persistence.PersistenceException;
-import jakarta.persistence.PessimisticLockException;
-import jakarta.persistence.Query;
-import jakarta.persistence.QueryTimeoutException;
-import jakarta.persistence.TemporalType;
-import jakarta.persistence.TransactionRequiredException;
-import jakarta.persistence.Tuple;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaQuery;
 
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
@@ -52,15 +39,8 @@ class TypedQueryImpl<T> extends AbstractQueryImpl implements TypedQuery<T> {
     return createNativeQuery().executeUpdate();
   }
 
-  @Override
-  public int getFirstResult() {
-    return parent.getFirstResult();
-  }
 
-  @Override
-  public int getMaxResults() {
-    return parent.getMaxResults();
-  }
+
 
   /**
    * Execute a SELECT query and return the query results as a typed List.
@@ -134,9 +114,21 @@ class TypedQueryImpl<T> extends AbstractQueryImpl implements TypedQuery<T> {
   }
 
   @Override
+  public T getSingleResultOrNull() {
+    throw new UnsupportedOperationException();
+  }
+
+
+
+  @Override
   public TypedQuery<T> setFirstResult(final int startPosition) {
     parent.setFirstResult(startPosition);
     return this;
+  }
+
+  @Override
+  public int getFirstResult() {
+    return parent.getFirstResult();
   }
 
   @Override
@@ -158,9 +150,44 @@ class TypedQueryImpl<T> extends AbstractQueryImpl implements TypedQuery<T> {
   }
 
   @Override
+  public TypedQuery<T> setCacheRetrieveMode(CacheRetrieveMode cacheRetrieveMode) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public TypedQuery<T> setCacheStoreMode(CacheStoreMode cacheStoreMode) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public CacheRetrieveMode getCacheRetrieveMode() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public CacheStoreMode getCacheStoreMode() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public TypedQuery<T> setTimeout(Integer integer) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Integer getTimeout() {
+    return 0;
+  }
+
+  @Override
   public TypedQuery<T> setMaxResults(final int maxResult) {
     this.parent.setMaxResults(maxResult);
     return this;
+  }
+
+  @Override
+  public int getMaxResults() {
+    return this.parent.getMaxResults();
   }
 
   /**

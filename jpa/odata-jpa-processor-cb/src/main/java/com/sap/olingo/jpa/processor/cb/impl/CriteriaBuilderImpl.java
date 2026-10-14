@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.Temporal;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -20,21 +21,7 @@ import java.util.Set;
 import javax.annotation.Nonnull;
 
 import jakarta.persistence.Tuple;
-import jakarta.persistence.criteria.CollectionJoin;
-import jakarta.persistence.criteria.CompoundSelection;
-import jakarta.persistence.criteria.CriteriaDelete;
-import jakarta.persistence.criteria.CriteriaUpdate;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.ListJoin;
-import jakarta.persistence.criteria.MapJoin;
-import jakarta.persistence.criteria.Order;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Selection;
-import jakarta.persistence.criteria.SetJoin;
-import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.*;
 
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.processor.cb.ProcessorCriteriaBuilder;
@@ -70,7 +57,6 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
   /**
    * Create an expression that returns the absolute value
    * of its argument.
-   * @param x expression
    * @return absolute value
    */
   @Override
@@ -98,6 +84,11 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
     return PredicateImpl.and(restrictions);
   }
 
+  @Override
+  public Predicate and(List<Predicate> list) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Create an any expression over the subquery results.
    * This expression is equivalent to a <code>some</code> expression.
@@ -119,6 +110,11 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
   @Override
   public CompoundSelection<Object[]> array(@Nonnull final Selection<?>... selections) {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public CompoundSelection<Object[]> array(List<Selection<?>> list) {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -196,7 +192,6 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    * Create an expression that returns null if all its arguments
    * evaluate to null, and the value of the first non-null argument
    * otherwise.
-   * @param x expression
    * @param y value
    * @return coalesce expression
    */
@@ -207,7 +202,6 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
 
   /**
    * Create an expression for string concatenation.
-   * @param x string expression
    * @param second string expression
    * @return expression corresponding to concatenation
    */
@@ -218,7 +212,6 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
 
   /**
    * Create an expression for string concatenation.
-   * @param x string expression
    * @param value string
    * @return expression corresponding to concatenation
    */
@@ -229,7 +222,6 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
 
   /**
    * Create an expression for string concatenation.
-   * @param x string
    * @param expression string expression
    * @return expression corresponding to concatenation
    */
@@ -336,6 +328,16 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
   @Override
   public Order desc(@Nonnull final Expression<?> x) {
     return new OrderImpl(false, Objects.requireNonNull((SqlConvertible) x));
+  }
+
+  @Override
+  public Order asc(Expression<?> expression, Nulls nulls) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Order desc(Expression<?> expression, Nulls nulls) {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -728,7 +730,6 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
   /**
    * Create an aggregate expression for finding the least of
    * the values (strings, dates, etc).
-   * @param x expression representing input value to least
    * operation
    * @return least expression
    */
@@ -743,8 +744,48 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    * @return length expression
    */
   @Override
-  public Expression<Integer> length(@Nonnull final Expression<String> expression) {
-    return new ExpressionImpl.LengthExpression(expression, sqlPattern);
+  public Expression<Integer> length(@Nonnull final Expression<String> x) {
+    return new ExpressionImpl.UnaryFunctionalExpression<>(x, SqlStringFunctions.LENGTH);
+  }
+
+  @Override
+  public Expression<String> left(Expression<String> expression, int i) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Expression<String> right(Expression<String> expression, int i) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Expression<String> left(Expression<String> expression, Expression<Integer> expression1) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Expression<String> right(Expression<String> expression, Expression<Integer> expression1) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Expression<String> replace(Expression<String> expression, Expression<String> expression1, Expression<String> expression2) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Expression<String> replace(Expression<String> expression, String s, Expression<String> expression1) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Expression<String> replace(Expression<String> expression, Expression<String> expression1, String s) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Expression<String> replace(Expression<String> expression, String s, String s1) {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -1139,6 +1180,11 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
     return not(like(x, pattern, escapeChar));
   }
 
+  @Override
+  public Expression<String> concat(List<Expression<String>> list) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Create a predicate for testing whether the expression
    * does not satisfy the given pattern.
@@ -1197,6 +1243,11 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
   @Override
   public Predicate or(final Predicate... restrictions) {
     return PredicateImpl.or(restrictions);
+  }
+
+  @Override
+  public Predicate or(List<Predicate> list) {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -1588,6 +1639,36 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
     throw new NotImplementedException();
   }
 
+  @Override
+  public <T> CriteriaSelect<T> union(CriteriaSelect<? extends T> criteriaSelect, CriteriaSelect<? extends T> criteriaSelect1) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <T> CriteriaSelect<T> unionAll(CriteriaSelect<? extends T> criteriaSelect, CriteriaSelect<? extends T> criteriaSelect1) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <T> CriteriaSelect<T> intersect(CriteriaSelect<? super T> criteriaSelect, CriteriaSelect<? super T> criteriaSelect1) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <T> CriteriaSelect<T> intersectAll(CriteriaSelect<? super T> criteriaSelect, CriteriaSelect<? super T> criteriaSelect1) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <T> CriteriaSelect<T> except(CriteriaSelect<T> criteriaSelect, CriteriaSelect<?> criteriaSelect1) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <T> CriteriaSelect<T> exceptAll(CriteriaSelect<T> criteriaSelect, CriteriaSelect<?> criteriaSelect1) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Downcast SetJoin object to the specified type.
    * @param join SetJoin object
@@ -1681,6 +1762,11 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
   @Override
   public CompoundSelection<Tuple> tuple(@Nonnull final Selection<?>... selections) {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public CompoundSelection<Tuple> tuple(List<Selection<?>> list) {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -1778,5 +1864,10 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
   @Override
   public Expression<LocalTime> localTime() {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public <N, T extends Temporal> Expression<N> extract(TemporalField<N, T> temporalField, Expression<T> expression) {
+    throw new UnsupportedOperationException();
   }
 }

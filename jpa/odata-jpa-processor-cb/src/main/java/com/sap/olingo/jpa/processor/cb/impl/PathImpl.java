@@ -14,6 +14,7 @@ import javax.annotation.Nonnull;
 
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.metamodel.Bindable;
 import jakarta.persistence.metamodel.MapAttribute;
 import jakarta.persistence.metamodel.PluralAttribute;
@@ -72,27 +73,9 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
     return statement;
   }
 
-  /**
-   * Create a path corresponding to the referenced
-   * map-valued attribute.
-   * @param map map-valued attribute
-   * @return expression corresponding to the referenced attribute
-   */
-  @Override
-  public <K, V, M extends Map<K, V>> Expression<M> get(final MapAttribute<X, K, V> map) {
-    throw new NotImplementedException();
-  }
 
-  /**
-   * Create a path corresponding to the referenced
-   * collection-valued attribute.
-   * @param collection collection-valued attribute
-   * @return expression corresponding to the referenced attribute
-   */
-  @Override
-  public <E, C extends Collection<E>> Expression<C> get(final PluralAttribute<X, C, E> collection) {
-    throw new NotImplementedException();
-  }
+
+
 
   /**
    * Create a path corresponding to the referenced
@@ -103,6 +86,16 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
   @Override
   public <Y> Path<Y> get(final SingularAttribute<? super X, Y> attribute) {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public <E, C extends Collection<E>> Expression<C> get(PluralAttribute<? super X, C, E> pluralAttribute) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <K, V, M extends Map<K, V>> Expression<M> get(MapAttribute<? super X, K, V> mapAttribute) {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -281,5 +274,30 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
             || path.isPresent() && path.equals(otherPath.path))
         && (tableAlias.isEmpty() && otherPath.tableAlias.isEmpty()
             || tableAlias.isPresent() && tableAlias.equals(otherPath.tableAlias));
+  }
+
+  @Override
+  public Predicate equalTo(Expression<?> expression) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Predicate equalTo(Object o) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Predicate notEqualTo(Expression<?> expression) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Predicate notEqualTo(Object o) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <X1> Expression<X1> cast(Class<X1> aClass) {
+    throw new UnsupportedOperationException();
   }
 }
