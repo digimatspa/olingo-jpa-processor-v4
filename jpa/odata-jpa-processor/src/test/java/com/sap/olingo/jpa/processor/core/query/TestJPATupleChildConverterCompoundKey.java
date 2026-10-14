@@ -1,24 +1,28 @@
 package com.sap.olingo.jpa.processor.core.query;
 
 import static com.sap.olingo.jpa.processor.core.converter.JPAExpandResult.ROOT_RESULT_KEY;
+import static java.util.Collections.emptyList;
+import static java.util.Optional.empty;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import jakarta.persistence.Tuple;
 
-import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.ex.ODataException;
+import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
+import com.sap.olingo.jpa.processor.core.api.JPAODataApiVersionAccess;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContext;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContextAccess;
 import com.sap.olingo.jpa.processor.core.api.JPAODataSessionContextAccess;
@@ -41,6 +45,7 @@ class TestJPATupleChildConverterCompoundKey extends TestBase {
   private JPAODataRequestContextAccess requestContext;
   private JPAODataRequestContext context;
   private JPAODataSessionContextAccess sessionContext;
+  private OData odata;
 
   @BeforeEach
   void setup() throws ODataException {
@@ -50,7 +55,11 @@ class TestJPATupleChildConverterCompoundKey extends TestBase {
     keyPredicates = new HashMap<>();
     context = mock(JPAODataRequestContext.class);
     sessionContext = mock(JPAODataSessionContextAccess.class);
-    requestContext = new JPAODataInternalRequestContext(context, sessionContext);
+    final var version = mock(JPAODataApiVersionAccess.class);
+    when(version.getEntityManagerFactory()).thenReturn(emf);
+    when(sessionContext.getApiVersion(any())).thenReturn(version);
+    odata = mock(OData.class);
+    requestContext = new JPAODataInternalRequestContext(context, sessionContext, odata);
   }
 
   @Test
@@ -73,8 +82,8 @@ class TestJPATupleChildConverterCompoundKey extends TestBase {
     uriHelper.setKeyPredicates(keyPredicates, "BusinessPartnerID");
     keyPredicates.put("3", "BusinessPartnerID='3',RoleCategory='C'");
 
-    final EntityCollection act = cut.getResult(new JPAExpandQueryResult(resultContainer, null, helper.getJPAEntityType(
-        "BusinessPartnerRoles"), Collections.emptyList()), Collections.emptyList()).get(ROOT_RESULT_KEY);
+    final var act = cut.getResult(new JPAExpandQueryResult(resultContainer, null, helper.getJPAEntityType(
+        "BusinessPartnerRoles"), emptyList(), empty()), emptyList()).get(ROOT_RESULT_KEY);
 
     assertEquals(1, act.getEntities().size());
     assertEquals("3", act.getEntities().get(0).getProperty("BusinessPartnerID").getValue().toString());
@@ -108,8 +117,8 @@ class TestJPATupleChildConverterCompoundKey extends TestBase {
     uriHelper.setKeyPredicates(keyPredicates, "DivisionCode");
     keyPredicates.put("DEU", "CodePublisher='ISO',CodeID='3166-1',DivisionCode='DEU',Language='en'");
 
-    final EntityCollection act = cut.getResult(new JPAExpandQueryResult(resultContainer, null, helper.getJPAEntityType(
-        "AdministrativeDivisionDescriptions"), Collections.emptyList()), Collections.emptyList()).get(ROOT_RESULT_KEY);
+    final var act = cut.getResult(new JPAExpandQueryResult(resultContainer, null, helper.getJPAEntityType(
+        "AdministrativeDivisionDescriptions"), emptyList(), empty()), emptyList()).get(ROOT_RESULT_KEY);
 
     assertEquals(1, act.getEntities().size());
     assertEquals("ISO", act.getEntities().get(0).getProperty("CodePublisher").getValue().toString());

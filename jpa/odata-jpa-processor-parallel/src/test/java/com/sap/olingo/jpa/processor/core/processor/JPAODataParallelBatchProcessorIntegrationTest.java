@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sap.olingo.jpa.metadata.api.JPAEntityManagerFactory;
-import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.processor.core.testmodel.DataSourceHelper;
 import com.sap.olingo.jpa.processor.test.util.IntegrationTestHelper;
 
@@ -28,7 +27,7 @@ class JPAODataParallelBatchProcessorIntegrationTest {
   private static DataSource ds;
 
   @BeforeAll
-  public static void setupClass() throws ODataJPAModelException {
+  static void setupClass() {
     ds = DataSourceHelper.createDataSource(DataSourceHelper.DB_H2);
     emf = JPAEntityManagerFactory.getEntityManagerFactory(PUNIT_NAME, ds);
   }
@@ -75,13 +74,11 @@ class JPAODataParallelBatchProcessorIntegrationTest {
     final IntegrationTestHelper helper = new IntegrationTestHelper(emf, "$batch", requestBody);
 
     JsonNode value = helper.getBatchResult(1);
-    System.out.println(value);
     assertEquals(200, helper.getBatchResultStatus(1));
     assertNotNull(value.get("ID"));
     assertEquals("3", value.get("ID").asText());
 
     value = helper.getBatchResult(2);
-    System.out.println(value);
     assertEquals(200, helper.getBatchResultStatus(2));
     assertNotNull(value.get("ID"));
     assertEquals("5", value.get("ID").asText());

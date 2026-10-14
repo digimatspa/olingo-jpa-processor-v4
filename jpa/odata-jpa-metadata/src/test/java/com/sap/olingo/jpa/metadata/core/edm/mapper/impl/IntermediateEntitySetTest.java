@@ -1,31 +1,34 @@
 package com.sap.olingo.jpa.metadata.core.edm.mapper.impl;
 
+import static com.sap.olingo.jpa.processor.core.util.Assertions.assertListEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.metamodel.EntityType;
 
 import org.apache.olingo.commons.api.edm.provider.CsdlAnnotation;
-import org.apache.olingo.commons.api.edm.provider.CsdlEntitySet;
+import org.apache.olingo.commons.api.edm.provider.CsdlNavigationPropertyBinding;
+import org.apache.olingo.commons.api.edm.provider.CsdlProperty;
 import org.apache.olingo.commons.api.edm.provider.annotation.CsdlConstantExpression;
 import org.apache.olingo.commons.api.edm.provider.annotation.CsdlConstantExpression.ConstantExpressionType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.reflections8.Reflections;
 
 import com.sap.olingo.jpa.metadata.api.JPAEdmMetadataPostProcessor;
@@ -33,23 +36,29 @@ import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmEnumeration;
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.AnnotationProvider;
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.Applicability;
-import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.ODataNavigationPath;
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.ODataPathNotFoundException;
-import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.ODataPropertyPath;
+import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.PropertyAccess;
+import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.TermAccess;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntitySet;
-import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.extension.IntermediateEntitySetAccess;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.extension.IntermediateEntityTypeAccess;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.extension.IntermediateNavigationPropertyAccess;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.extension.IntermediatePropertyAccess;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.extension.IntermediateReferenceList;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.util.AnnotationTestHelper;
+import com.sap.olingo.jpa.metadata.odata.v4.capabilities.terms.CountRestrictionsProperties;
+import com.sap.olingo.jpa.metadata.odata.v4.capabilities.terms.ExpandRestrictionsProperties;
+import com.sap.olingo.jpa.metadata.odata.v4.capabilities.terms.FilterRestrictionsProperties;
+import com.sap.olingo.jpa.metadata.odata.v4.capabilities.terms.Terms;
+import com.sap.olingo.jpa.metadata.odata.v4.capabilities.terms.UpdateMethod;
+import com.sap.olingo.jpa.metadata.odata.v4.capabilities.terms.UpdateRestrictionsProperties;
+import com.sap.olingo.jpa.metadata.odata.v4.general.Aliases;
+import com.sap.olingo.jpa.metadata.odata.v4.provider.JavaBasedCapabilitiesAnnotationsProvider;
 import com.sap.olingo.jpa.processor.core.testmodel.ABCClassification;
-import com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivisionDescription;
 import com.sap.olingo.jpa.processor.core.testmodel.AnnotationsParent;
-import com.sap.olingo.jpa.processor.core.testmodel.BestOrganization;
 import com.sap.olingo.jpa.processor.core.testmodel.BusinessPartner;
-import com.sap.olingo.jpa.processor.core.testmodel.Organization;
+import com.sap.olingo.jpa.processor.core.testmodel.Person;
 
 class IntermediateEntitySetTest extends TestMappingRoot {
   private IntermediateSchema schema;
@@ -61,7 +70,7 @@ class IntermediateEntitySetTest extends TestMappingRoot {
   @BeforeEach
   void setup() throws ODataJPAModelException {
     IntermediateModelElement.setPostProcessor(new DefaultEdmPostProcessor());
-    final Reflections reflections = mock(Reflections.class);
+    final var reflections = mock(Reflections.class);
     when(reflections.getTypesAnnotatedWith(EdmEnumeration.class)).thenReturn(new HashSet<>(Arrays.asList(
         ABCClassification.class)));
 
@@ -69,78 +78,78 @@ class IntermediateEntitySetTest extends TestMappingRoot {
     nameBuilder = new JPADefaultEdmNameBuilder(PUNIT_NAME);
     references = mock(IntermediateReferences.class);
     annotationInfo = new IntermediateAnnotationInformation(new ArrayList<>(), references);
-    schema = new IntermediateSchema(nameBuilder, emf.getMetamodel(), reflections, annotationInfo);
+    schema = new IntermediateSchema(nameBuilder, emf.getMetamodel(), reflections, annotationInfo, true);
   }
 
   @Test
   void checkAnnotationSet() throws ODataJPAModelException {
     IntermediateModelElement.setPostProcessor(new PostProcessor());
-    final IntermediateEntityType<AdministrativeDivisionDescription> et = new IntermediateEntityType<>(nameBuilder,
+    final var et = new IntermediateEntityType<>(nameBuilder,
         getEntityType("AdministrativeDivisionDescription"), schema);
-    final IntermediateEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
-    final List<CsdlAnnotation> act = es.getEdmItem().getAnnotations();
+    final var es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
+    final var act = es.getEdmItem().getAnnotations();
     assertEquals(1, act.size());
     assertEquals("Capabilities.TopSupported", act.get(0).getTerm());
   }
 
   @Test
   void checkODataEntityTypeDiffers() throws ODataJPAModelException {
-    final IntermediateEntityType<BestOrganization> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType("BestOrganization"), schema);
 
-    final IntermediateEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
+    final var es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
 
-    final JPAEntityType odataEt = es.getODataEntityType();
+    final var odataEt = es.getODataEntityType();
     assertEquals("BusinessPartner", odataEt.getExternalName());
   }
 
   @Test
   void checkODataEntityTypeSame() throws ODataJPAModelException {
-    final IntermediateEntityType<Organization> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType("Organization"), schema);
 
-    final IntermediateEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
+    final var es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
 
-    final JPAEntityType odataEt = es.getODataEntityType();
+    final var odataEt = es.getODataEntityType();
     assertEquals("Organization", odataEt.getExternalName());
   }
 
   @Test
   void checkEdmItemContainsODataEntityType() throws ODataJPAModelException {
-    final IntermediateEntityType<BestOrganization> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType("BestOrganization"), schema);
 
-    final IntermediateEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
-    final CsdlEntitySet act = es.getEdmItem();
+    final var es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
+    final var act = es.getEdmItem();
     assertEquals(et.buildFQN("BusinessPartner").getFullQualifiedNameAsString(), act.getType());
   }
 
   @Test
   void checkConvertStringToPathWithSimplePath() throws ODataJPAModelException, ODataPathNotFoundException {
-    final IntermediateEntityType<BusinessPartner> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType(BusinessPartner.class), schema);
     final IntermediateTopLevelEntity es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
-    final ODataPropertyPath act = es.convertStringToPath("type");
+    final var act = es.convertStringToPath("type");
     assertNotNull(act);
     assertEquals("Type", act.getPathAsString());
   }
 
   @Test
   void checkConvertStringToNavigationPathWithSimplePath() throws ODataJPAModelException, ODataPathNotFoundException {
-    final IntermediateEntityType<BusinessPartner> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType(BusinessPartner.class), schema);
     final IntermediateTopLevelEntity es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
-    final ODataNavigationPath act = es.convertStringToNavigationPath("roles");
+    final var act = es.convertStringToNavigationPath("roles");
     assertNotNull(act);
     assertEquals("Roles", act.getPathAsString());
   }
 
   @Test
   void checkJavaAnnotationsOneAnnotation() throws ODataJPAModelException {
-    final IntermediateEntityType<BusinessPartner> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType(BusinessPartner.class), schema);
     final IntermediateTopLevelEntity es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
-    final Map<String, Annotation> act = es.javaAnnotations(EdmEntityType.class.getPackage().getName());
+    final var act = es.javaAnnotations(EdmEntityType.class.getPackage().getName());
     assertEquals(2, act.size());
     assertNotNull(act.get("EdmEntityType"));
     assertNotNull(act.get("EdmFunctions"));
@@ -148,10 +157,10 @@ class IntermediateEntitySetTest extends TestMappingRoot {
 
   @Test
   void checkJavaAnnotationsTwoAnnotations() throws ODataJPAModelException {
-    final IntermediateEntityType<BusinessPartner> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType(BusinessPartner.class), schema);
     final IntermediateTopLevelEntity es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
-    final Map<String, Annotation> act = es.javaAnnotations(Entity.class.getPackage().getName());
+    final var act = es.javaAnnotations(Entity.class.getPackage().getName());
     assertEquals(4, act.size());
     assertNotNull(act.get("Table"));
     assertNotNull(act.get("Entity"));
@@ -161,27 +170,27 @@ class IntermediateEntitySetTest extends TestMappingRoot {
 
   @Test
   void checkJavaAnnotationsNoAnnotations() throws ODataJPAModelException {
-    final IntermediateEntityType<BusinessPartner> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType(BusinessPartner.class), schema);
     final IntermediateTopLevelEntity es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
-    final Map<String, Annotation> act = es.javaAnnotations(Test.class.getPackage().toString());
+    final var act = es.javaAnnotations(Test.class.getPackage().toString());
     assertTrue(act.isEmpty());
   }
 
   @Test
   void checkGetAnnotationReturnsExistingAnnotation() throws ODataJPAModelException {
-    createAnnotation();
-    final IntermediateEntityType<AnnotationsParent> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    createAnnotations();
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType(AnnotationsParent.class), schema);
     final JPAEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
-    final CsdlAnnotation act = es.getAnnotation("Capabilities", "FilterRestrictions");
+    final var act = es.getAnnotation("Capabilities", "FilterRestrictions");
     assertNotNull(act);
   }
 
   @Test
   void checkGetAnnotationReturnsNullAliasUnknown() throws ODataJPAModelException {
-    createAnnotation();
-    final IntermediateEntityType<AnnotationsParent> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    createAnnotations();
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType(AnnotationsParent.class), schema);
     final JPAEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
     assertNull(es.getAnnotation("Capability", "FilterRestrictions"));
@@ -189,52 +198,175 @@ class IntermediateEntitySetTest extends TestMappingRoot {
 
   @Test
   void checkGetAnnotationReturnsNullAnnotationUnknown() throws ODataJPAModelException {
-    createAnnotation();
-    final IntermediateEntityType<AnnotationsParent> et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+    createAnnotations();
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), getEntityType(AnnotationsParent.class), schema);
     final JPAEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
     assertNull(es.getAnnotation("Capabilities", "Filter"));
   }
 
-  private void createAnnotation() {
-    final AnnotationProvider annotationProvider = mock(AnnotationProvider.class);
-    final List<CsdlAnnotation> annotations = new ArrayList<>();
-    final CsdlAnnotation annotation = mock(CsdlAnnotation.class);
-    annotations.add(annotation);
-    when(references.convertAlias("Capabilities")).thenReturn("Org.OData.Capabilities.V1");
-    when(annotation.getTerm()).thenReturn("Org.OData.Capabilities.V1.FilterRestrictions");
-    annotationInfo.getAnnotationProvider().add(annotationProvider);
-    when(annotationProvider.getAnnotations(eq(Applicability.ENTITY_SET), any(), any()))
-        .thenReturn(annotations);
+  @Test
+  void checkGetAnnotationValueReturnsNullAnnotationUnknown() throws ODataJPAModelException {
+    createAnnotations();
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+        PUNIT_NAME), getEntityType(AnnotationsParent.class), schema);
+    final JPAEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
+    assertNull(es.getAnnotationValue("Capabilities", "Filter", "Filterable"));
   }
 
-  private class PostProcessor implements JPAEdmMetadataPostProcessor {
+  static Stream<Arguments> expectedSimpleValue() {
+    return Stream.of(
+        Arguments.of(Terms.FILTER_RESTRICTIONS, FilterRestrictionsProperties.FILTERABLE, Boolean.class, Boolean.TRUE),
+        Arguments.of(Terms.UPDATE_RESTRICTIONS, UpdateRestrictionsProperties.UPDATE_METHOD, String.class,
+            UpdateMethod.PATCH.name()),
+        Arguments.of(Terms.UPDATE_RESTRICTIONS, UpdateRestrictionsProperties.DESCRIPTION, String.class, "Just to test"),
+        Arguments.of(Terms.EXPAND_RESTRICTIONS, ExpandRestrictionsProperties.MAX_LEVELS, Integer.class, Integer.valueOf(
+            2)));
+  }
+
+  @ParameterizedTest
+  @MethodSource("expectedSimpleValue")
+  void checkGetAnnotationValueSimpleProperty(final TermAccess term, final PropertyAccess propertyName,
+      final Class<?> type, final Object expectedValue) throws ODataJPAModelException {
+
+    createAnnotations();
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+        PUNIT_NAME), getEntityType(AnnotationsParent.class), schema);
+    final JPAEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
+
+    final var act = es.getAnnotationValue("Capabilities", term.term(), propertyName.property());
+    assertNotNull(act);
+    assertTrue(type.isAssignableFrom(act.getClass()));
+    assertEquals(expectedValue, act);
+
+    assertEquals(expectedValue, es.getAnnotationValue("Capabilities", term.term(), propertyName.property(), type));
+    assertEquals(expectedValue, es.getAnnotationValue(Aliases.CAPABILITIES, term, propertyName, type));
+  }
+
+  static Stream<Arguments> expectedCollectionValue() {
+    return Stream.of(
+        Arguments.of(Terms.FILTER_RESTRICTIONS, FilterRestrictionsProperties.REQUIRED_PROPERTIES, Arrays.asList(
+            "ParentCodeID", "ParentDivisionCode"), false),
+        Arguments.of(Terms.COUNT_RESTRICTIONS, CountRestrictionsProperties.NON_COUNTABLE_NAVIGATION_PROPERTIES, Arrays
+            .asList("Children"), true));
+  }
+
+  @ParameterizedTest
+  @MethodSource("expectedCollectionValue")
+  void checkGetAnnotationValueCollectionProperty(final TermAccess term, final PropertyAccess propertyName,
+      final List<String> expectedValues, final boolean isNavigation) throws ODataJPAModelException {
+
+    createAnnotations();
+    final var et = new IntermediateEntityType<>(new JPADefaultEdmNameBuilder(
+        PUNIT_NAME), getEntityType(AnnotationsParent.class), schema);
+    final List<?> exp;
+    if (isNavigation) {
+      exp = expectedValues.stream().map(name -> {
+        try {
+          return et.getAssociationPath(name);
+        } catch (final ODataJPAModelException e) {
+          fail(e);
+          return null;
+        }
+      }).toList();
+    } else {
+      exp = expectedValues.stream().map(name -> {
+        try {
+          return et.getPath(name);
+        } catch (final ODataJPAModelException e) {
+          fail(e);
+          return null;
+        }
+      }).toList();
+    }
+    final JPAEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
+
+    final var act = es.getAnnotationValue("Capabilities", term.term(), propertyName.property());
+    assertNotNull(act);
+    assertEquals(exp, act);
+  }
+
+  @Test
+  void checkAsUserGroupRestrictedUserRestrictsNavigations() throws ODataJPAModelException {
+    final IntermediateEntityType<Person> et = new IntermediateEntityType<>(
+        new JPADefaultEdmNameBuilder(PUNIT_NAME), getEntityType(Person.class), schema);
+    final IntermediateEntitySet es = new IntermediateEntitySet(nameBuilder, et, annotationInfo);
+
+    final IntermediateEntitySet act = es.asUserGroupRestricted(List.of("Company"), true);
+    assertEquals(es.getExternalFQN(), act.getExternalFQN());
+    assertEquals(es.getExternalName(), act.getExternalName());
+    assertEquals(es.getInternalName(), act.getInternalName());
+    assertListEquals(es.getEdmItem().getNavigationPropertyBindings(), act.getEdmItem().getNavigationPropertyBindings(),
+        CsdlNavigationPropertyBinding.class);
+    final IntermediateEntitySet act2 = es.asUserGroupRestricted(List.of("Person"), true);
+    assertEquals(es.getExternalFQN(), act2.getExternalFQN());
+    assertEquals(es.getExternalName(), act2.getExternalName());
+    assertEquals(es.getInternalName(), act2.getInternalName());
+    assertEquals(es.getEdmItem().getNavigationPropertyBindings().size() - 1, act2.getEdmItem()
+        .getNavigationPropertyBindings().size());
+  }
+
+  private void createAnnotations() {
+    final AnnotationProvider annotationProvider = new JavaBasedCapabilitiesAnnotationsProvider();
+    final List<CsdlProperty> propertiesFilter = new ArrayList<>();
+    final List<CsdlProperty> propertiesExpand = new ArrayList<>();
+    final List<CsdlProperty> propertiesUpdate = new ArrayList<>();
+    final List<CsdlProperty> propertiesCount = new ArrayList<>();
+
+    final var termFilter = AnnotationTestHelper.addTermToCapabilitiesReferences(references, "FilterRestrictions",
+        "FilterRestrictionsType", propertiesFilter);
+    final var termExpand = AnnotationTestHelper.addTermToCapabilitiesReferences(references, "ExpandRestrictions",
+        "ExpandRestrictionsType", propertiesExpand);
+    final var termUpdate = AnnotationTestHelper.addTermToCapabilitiesReferences(references, "UpdateRestrictions",
+        "UpdateRestrictionsType", propertiesUpdate);
+    final var termCount = AnnotationTestHelper.addTermToCapabilitiesReferences(references, "CountRestrictions",
+        "CountRestrictionsType", propertiesCount);
+
+    propertiesFilter.add(AnnotationTestHelper.createTermProperty("Filterable", "Edm.Boolean"));
+    propertiesFilter.add(AnnotationTestHelper.createTermCollectionProperty("RequiredProperties", "Edm.PropertyPath"));
+    propertiesExpand.add(AnnotationTestHelper.createTermProperty("MaxLevels", "Edm.Int32"));
+    propertiesUpdate.add(AnnotationTestHelper.createTermProperty("UpdateMethod", "Capabilities.HttpMethod"));
+    propertiesUpdate.add(AnnotationTestHelper.createTermProperty("Description", "Edm.String"));
+    propertiesCount.add(AnnotationTestHelper.createTermCollectionProperty("NonCountableNavigationProperties",
+        "Edm.NavigationPropertyPath"));
+
+    when(references.convertAlias("Capabilities")).thenReturn("Org.OData.Capabilities.V1");
+    when(references.getTerms("Capabilities", Applicability.ENTITY_SET))
+        .thenReturn(Arrays.asList(termFilter, termExpand, termUpdate, termCount));
+    annotationInfo.getAnnotationProvider().add(annotationProvider);
+  }
+
+  private static class PostProcessor implements JPAEdmMetadataPostProcessor {
 
     @Override
     public void processProperty(final IntermediatePropertyAccess property, final String jpaManagedTypeClassName) {
-      if (jpaManagedTypeClassName.equals(
-          "com.sap.olingo.jpa.processor.core.testmodel.BusinessPartner")) {
-        if (property.getInternalName().equals("communicationData")) {
-          property.setIgnore(true);
-        }
+      if (jpaManagedTypeClassName.equals("com.sap.olingo.jpa.processor.core.testmodel.BusinessPartner")
+          && property.getInternalName().equals("communicationData")) {
+        property.setIgnore(true);
       }
     }
 
     @Override
     public void processNavigationProperty(final IntermediateNavigationPropertyAccess property,
-        final String jpaManagedTypeClassName) {}
+        final String jpaManagedTypeClassName) {
+      // Not needed
+    }
 
     @Override
-    public void processEntityType(final IntermediateEntityTypeAccess entity) {}
+    public void processEntityType(final IntermediateEntityTypeAccess entity) {
+      // Not needed
+    }
 
     @Override
-    public void provideReferences(final IntermediateReferenceList references) throws ODataJPAModelException {}
+    public void provideReferences(final IntermediateReferenceList references) throws ODataJPAModelException {
+      // Not needed
+    }
 
     @Override
     public void processEntitySet(final IntermediateEntitySetAccess entitySet) {
 
-      final CsdlConstantExpression mimeType = new CsdlConstantExpression(ConstantExpressionType.Bool, "false");
-      final CsdlAnnotation annotation = new CsdlAnnotation();
+      final var mimeType = new CsdlConstantExpression(ConstantExpressionType.Bool, "false");
+      final var annotation = new CsdlAnnotation();
       annotation.setExpression(mimeType);
       annotation.setTerm("Capabilities.TopSupported");
       final List<CsdlAnnotation> annotations = new ArrayList<>();

@@ -24,15 +24,21 @@ import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 
 import org.apache.olingo.commons.api.edm.EdmEntityType;
+import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriInfoResource;
 import org.apache.olingo.server.api.uri.UriResource;
 import org.apache.olingo.server.api.uri.UriResourceCount;
 import org.apache.olingo.server.api.uri.UriResourceKind;
+import org.apache.olingo.server.api.uri.UriResourceLambdaVariable;
 import org.apache.olingo.server.api.uri.UriResourceNavigation;
 import org.apache.olingo.server.api.uri.UriResourcePartTyped;
+import org.apache.olingo.server.api.uri.UriResourcePrimitiveProperty;
+import org.apache.olingo.server.api.uri.queryoption.expression.Binary;
+import org.apache.olingo.server.api.uri.queryoption.expression.BinaryOperatorKind;
 import org.apache.olingo.server.api.uri.queryoption.expression.Literal;
+import org.apache.olingo.server.api.uri.queryoption.expression.Member;
 import org.apache.olingo.server.api.uri.queryoption.expression.VisitableExpression;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,8 +47,10 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAElement;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAOnConditionItem;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.processor.cb.ProcessorCriteriaBuilder;
@@ -50,9 +58,10 @@ import com.sap.olingo.jpa.processor.core.api.JPAODataClaimProvider;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContextAccess;
 import com.sap.olingo.jpa.processor.core.database.JPAODataDatabaseOperations;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterException;
-import com.sap.olingo.jpa.processor.core.exception.ODataJPAQueryException;
 import com.sap.olingo.jpa.processor.core.filter.JPACountExpression;
 import com.sap.olingo.jpa.processor.core.filter.JPANullExpression;
+import com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinAccount;
+import com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinLockedSavingAccount;
 import com.sap.olingo.jpa.processor.core.testmodel.Person;
 
 class JPANavigationFilterQueryBuilderTest {
@@ -102,7 +111,7 @@ class JPANavigationFilterQueryBuilderTest {
 
     cut = new JPANavigationFilterQueryBuilder(cb);
 
-    when(((UriResourceNavigation) uriResourceItem).getType()).thenReturn(type);
+    when(uriResourceItem.getType()).thenReturn(type);
     when(sd.getEntity(type)).thenReturn(et);
     doReturn(Integer.class).when(et).getKeyType();
     doReturn(Person.class).when(et).getTypeClass();
@@ -119,6 +128,7 @@ class JPANavigationFilterQueryBuilderTest {
   @Test
   void testCreatesFilterQuery() throws ODataApplicationException, ODataJPAModelException {
     final OData o = OData.newInstance();
+    buildAssociationPath();
 
     cut.setOdata(o)
         .setServiceDocument(sd)
@@ -154,6 +164,8 @@ class JPANavigationFilterQueryBuilderTest {
   @MethodSource("provideCountExpressions")
   void testCreatesCountQuery(final VisitableExpression exp) throws ODataApplicationException, ODataJPAModelException {
     final OData o = OData.newInstance();
+    final var associationPath = buildAssociationPath();
+    when(navigationInfo.getAssociationPath()).thenReturn(associationPath);
 
     cut.setOdata(o)
         .setServiceDocument(sd)
@@ -189,6 +201,8 @@ class JPANavigationFilterQueryBuilderTest {
   @MethodSource("provideNullExpressions")
   void testCreatesNullQuery(final VisitableExpression exp) throws ODataApplicationException, ODataJPAModelException {
     final OData o = OData.newInstance();
+    final var associationPath = buildAssociationPath();
+    when(navigationInfo.getAssociationPath()).thenReturn(associationPath);
 
     cut.setOdata(o)
         .setServiceDocument(sd)
@@ -232,11 +246,13 @@ class JPANavigationFilterQueryBuilderTest {
 
   @Test
   void testAsInQueryTrueForCriteriaBuilderAssociationOneAttribute() throws ODataJPAModelException,
-      ODataJPAFilterException, ODataJPAQueryException {
+      ODataJPAFilterException {
 
+    final JPAPath leftPath = mock(JPAPath.class);
     final JPAAssociationPath associationPath = mock(JPAAssociationPath.class);
     final JPAOnConditionItem onCondition = mock(JPAOnConditionItem.class);
     when(associationPath.getJoinColumnsList()).thenReturn(Collections.singletonList(onCondition));
+    when(associationPath.getLeftColumnsList()).thenReturn(Collections.singletonList(leftPath));
     when(navigationInfo.getAssociationPath()).thenReturn(associationPath);
     cut.setNavigationInfo(navigationInfo);
     cut.setExpression(buildCountFromCountExpression());
@@ -245,11 +261,8 @@ class JPANavigationFilterQueryBuilderTest {
 
   @Test
   void testAsInQueryFalseForCriteriaBuilderAssociationTwoAttribute() throws ODataJPAModelException,
-      ODataJPAFilterException, ODataJPAQueryException {
-
-    final JPAAssociationPath associationPath = mock(JPAAssociationPath.class);
-    final JPAOnConditionItem onCondition = mock(JPAOnConditionItem.class);
-    when(associationPath.getJoinColumnsList()).thenReturn(Arrays.asList(onCondition, onCondition));
+      ODataJPAFilterException {
+    final var associationPath = buildAssociationPath();
     when(navigationInfo.getAssociationPath()).thenReturn(associationPath);
     cut.setNavigationInfo(navigationInfo);
     cut.setExpression(buildCountFromCountExpression());
@@ -257,13 +270,79 @@ class JPANavigationFilterQueryBuilderTest {
   }
 
   @Test
-  void testAsInQueryRethrowsException() throws ODataJPAFilterException, ODataJPAModelException, ODataJPAQueryException {
+  void testAsInQueryRethrowsException() throws ODataJPAModelException {
 
     final JPAAssociationPath associationPath = mock(JPAAssociationPath.class);
+    when(associationPath.getLeftColumnsList()).thenThrow(ODataJPAModelException.class);
     when(associationPath.getJoinColumnsList()).thenThrow(ODataJPAModelException.class);
     when(navigationInfo.getAssociationPath()).thenReturn(associationPath);
     cut.setNavigationInfo(navigationInfo);
     assertThrows(ODataJPAFilterException.class, () -> cut.asInQuery());
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void testPerformsTypeCastFromLambda() throws ODataJPAModelException, ODataApplicationException {
+
+    final OData o = OData.newInstance();
+    final var expFqn = new FullQualifiedName("com.sap.olingo.jpa.InheritanceLockedSavingAccount");
+    final var expEt = mock(JPAEntityType.class);
+    when(expEt.getExternalFQN()).thenReturn(expFqn);
+    doReturn(InheritanceByJoinLockedSavingAccount.class).when(expEt).getTypeClass();
+    doReturn(Integer.class).when(expEt).getKeyType();
+
+    final Root<InheritanceByJoinAccount> accountRoot = mock(Root.class);
+    final Root<InheritanceByJoinLockedSavingAccount> lockingRoot = mock(Root.class);
+    doReturn(InheritanceByJoinAccount.class).when(et).getTypeClass();
+    doReturn(new FullQualifiedName("com.sap.olingo.jpa.InheritanceAccount")).when(et).getExternalFQN();
+    when(subQuery.from(InheritanceByJoinAccount.class)).thenReturn(accountRoot);
+    when(subQuery.from(InheritanceByJoinLockedSavingAccount.class)).thenReturn(lockingRoot);
+
+    final JPAOnConditionItem onCondition = mock(JPAOnConditionItem.class);
+    final JPAElement pathItem = mock(JPAElement.class);
+    when(association.getJoinColumnsList()).thenReturn(Arrays.asList(onCondition, onCondition));
+    when(association.getPath()).thenReturn(Arrays.asList(pathItem));
+    when(association.getTargetType()).thenReturn(et);
+
+    final Binary exp = mock(Binary.class);
+    final UriInfoResource uriInfo = mock(UriInfoResource.class);
+    final UriResourceLambdaVariable lambdaVar = mock(UriResourceLambdaVariable.class);
+    final UriResourcePrimitiveProperty property = mock(UriResourcePrimitiveProperty.class);
+    final Literal right = mock(Literal.class);
+    final Member left = mock(Member.class);
+
+    when(exp.getRightOperand()).thenReturn(right);
+    when(exp.getLeftOperand()).thenReturn(left);
+    when(exp.getOperator()).thenReturn(BinaryOperatorKind.GT);
+
+    when(left.getResourcePath()).thenReturn(uriInfo);
+    when(uriInfo.getUriResourceParts()).thenReturn(List.of(lambdaVar, property));
+    when(lambdaVar.getSegmentValue(true)).thenReturn("s/com.sap.olingo.jpa.InheritanceLockedSavingAccount");
+    // ((UriResourceLambdaVariable)((Member)((Binary)expression).getLeftOperand()).getResourcePath().getUriResourceParts().get(0)).getSegmentValue(true)
+
+    when(sd.getEntity(expFqn)).thenReturn(expEt);
+
+    cut.setOdata(o)
+        .setServiceDocument(sd)
+        .setEntityManager(em)
+        .setNavigationInfo(navigationInfo)
+        .setParent(parent)
+        .setFrom(from)
+        .setClaimsProvider(claimsProvider)
+        .setExpression(exp)
+        .setGroups(groups);
+
+    final JPAAbstractSubQuery act = cut.build();
+    assertTrue(act instanceof JPANavigationFilterQuery);
+    assertEquals(expFqn, act.jpaEntity.getExternalFQN());
+  }
+
+  private JPAAssociationPath buildAssociationPath() throws ODataJPAModelException {
+    final JPAOnConditionItem onCondition = mock(JPAOnConditionItem.class);
+    final JPAElement pathItem = mock(JPAElement.class);
+    when(association.getJoinColumnsList()).thenReturn(Arrays.asList(onCondition, onCondition));
+    when(association.getPath()).thenReturn(Arrays.asList(pathItem));
+    return association;
   }
 
   private static VisitableExpression buildCountFromCountExpression() {

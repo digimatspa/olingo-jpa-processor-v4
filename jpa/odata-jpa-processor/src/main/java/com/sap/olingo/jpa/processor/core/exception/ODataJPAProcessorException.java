@@ -46,11 +46,12 @@ public class ODataJPAProcessorException extends ODataJPAProcessException { // NO
     ACTION_UNKNOWN,
     ENUMERATION_UNKNOWN,
     NO_METADATA_PROVIDER,
-
+    VERSION_NOT_FOUND,
     EXPAND_NON_SUPPORTED_EXPAND,
     EXPAND_NON_SUPPORTED_AT_ALL,
     EXPAND_EXCEEDS_MAX_LEVEL,
 
+    VALIDATION_NOT_POSSIBLE_TOO_MANY_RESULTS,
     COUNT_NON_SUPPORTED_COUNT;
 
     @Override
@@ -85,7 +86,8 @@ public class ODataJPAProcessorException extends ODataJPAProcessException { // NO
     super(messageKey.getKey(), statusCode, params);
   }
 
-  public ODataJPAProcessorException(final MessageKeys messageKey, final HttpStatusCode statusCode, final Throwable exception) {
+  public ODataJPAProcessorException(final MessageKeys messageKey, final HttpStatusCode statusCode,
+      final Throwable exception) {
     super(messageKey.getKey(), statusCode, exception);
   }
 

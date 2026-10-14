@@ -83,7 +83,10 @@ class TestJPAQueryNavigation extends TestBase {
         Arguments.of(
             // maybe the expected status is wrong, but it is hard to implement an 404
             "BusinessPartnerRoles(BusinessPartnerID='1',RoleCategory='A')/BusinessPartner/com.sap.olingo.jpa.Person",
-            null, null, 0, 204, "NavigationWithCastWrongDerivedType"));
+            null, null, 0, 204, "NavigationWithCastWrongDerivedType"),
+        Arguments.of(
+            "Persons('99')/Accounts/com.sap.olingo.jpa.InheritanceLockedSavingAccount",
+            "LockedSavingAccount", "Type", 1, 200, "NavigationWithCastInheritanceJoined"));
   }
 
   @ParameterizedTest
@@ -95,7 +98,10 @@ class TestJPAQueryNavigation extends TestBase {
     helper.assertStatus(status);
     if (noResults == 1) {
       final ObjectNode created = helper.getValue();
-      assertEquals(exp, created.get(propertyName).asText(), message);
+      if (created.get("value") == null)
+        assertEquals(exp, created.get(propertyName).asText(), message);
+      else
+        assertEquals(exp, created.get("value").get(0).get(propertyName).asText(), message);
     } else if (noResults > 1) {
       final ArrayNode created = helper.getValues();
       assertEquals(noResults, created.size());
@@ -239,10 +245,22 @@ class TestJPAQueryNavigation extends TestBase {
     final IntegrationTestHelper helper = new IntegrationTestHelper(emf, "Organizations('1')/AdministrativeInformation");
     helper.assertStatus(200);
 
-    final ObjectNode org = helper.getValue();
+    final ObjectNode info = helper.getValue();
 
-    assertNotNull(org.get("Created"));
-    assertNotNull(org.get("Updated"));
+    assertNotNull(info.get("Created"));
+    assertNotNull(info.get("Updated"));
+  }
+
+  @Test
+  void testSingletonNavigationComplexProperty() throws IOException, ODataException {
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf, "CurrentUser/AdministrativeInformation");
+    helper.assertStatus(200);
+
+    final ObjectNode info = helper.getValue();
+
+    assertNotNull(info.get("Created"));
+    assertNotNull(info.get("Updated"));
   }
 
   @Test

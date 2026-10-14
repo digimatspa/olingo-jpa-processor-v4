@@ -11,13 +11,15 @@ import org.flywaydb.core.internal.jdbc.DriverDataSource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import db.migration.V1_1__SchemaMigration;
+
 public class DataSourceHelper {
   private static final String DB_SCHEMA = "OLINGO";
 
   private static final String H2_URL = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=MySQL";
   private static final String HSQLDB_URL = "jdbc:hsqldb:mem:com.sample";
   private static final String DERBY_URL =
-      "jdbc:derby:test;create=true;traceFile=derby_trace.log;trace_level=0xFFFFFFFF";
+      "jdbc:derby:memory:test;create=true";
   private static final String REMOTE_URL = "jdbc:$DBNAME$:$Host$:$Port$";
 
   public static final int DB_H2 = 1;
@@ -64,6 +66,9 @@ public class DataSourceHelper {
 
     config.schemas(DB_SCHEMA);
     config.createSchemas(true);
+    // Prefer additional migration over callback to create UDFs
+    config.javaMigrations(new V1_1__SchemaMigration());
+    config.loggers("auto");
     new Flyway(config).migrate();
     return config.getDataSource();
   }

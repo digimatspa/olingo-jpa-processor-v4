@@ -8,6 +8,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.util.List;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Version;
@@ -42,12 +43,24 @@ class IntermediateSimpleProperty extends IntermediateProperty {
 
   private static final Log LOGGER = LogFactory.getLog(IntermediateSimpleProperty.class);
   private EdmMediaStream streamInfo;
+  private Boolean isKey;
 
   IntermediateSimpleProperty(final JPAEdmNameBuilder nameBuilder, final Attribute<?, ?> jpaAttribute,
-      final IntermediateSchema schema)
-      throws ODataJPAModelException {
-
+      final IntermediateSchema schema) throws ODataJPAModelException {
     super(nameBuilder, jpaAttribute, schema);
+  }
+
+  IntermediateSimpleProperty(final IntermediateSimpleProperty source, final List<String> userGroups,
+      final boolean hideRestrictedProperties)
+      throws ODataJPAModelException {
+    super(source, userGroups, hideRestrictedProperties);
+  }
+
+  IntermediateSimpleProperty(final IntermediateSimpleProperty source, final String newDbFieldName,
+      final boolean hideRestrictedProperties)
+      throws ODataJPAModelException {
+    super(source, source.getUserGroups(), hideRestrictedProperties);
+    this.dbFieldName = newDbFieldName;
   }
 
   @Override
@@ -67,19 +80,28 @@ class IntermediateSimpleProperty extends IntermediateProperty {
 
   @Override
   public boolean isKey() {
-    if (jpaAttribute instanceof SingularAttribute<?, ?>)
-      return ((SingularAttribute<?, ?>) jpaAttribute).isId();
+    return isKey != null ? isKey : isIdAttribute();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  protected <T extends IntermediateModelElement> T asUserGroupRestricted(final List<String> userGroups,
+      final boolean hideRestrictedProperties) // NOSONAR
+      throws ODataJPAModelException { // NOSONAR
+
+    if (this.isComplex())
+      return (T) new IntermediateSimpleProperty(this, userGroups, hideRestrictedProperties);
     else
-      return false;
+      return (T) this;
   }
 
   @Override
   void checkConsistency() throws ODataJPAModelException {
     final Column jpaColumn = ((AnnotatedElement) jpaAttribute.getJavaMember()).getAnnotation(Column.class);
-    if (jpaColumn != null && isPartOfGroup() && !jpaColumn.nullable())
+    if (jpaColumn != null && hasUserGroupRestriction() && !jpaColumn.nullable())
       throw new ODataJPAModelException(NOT_SUPPORTED_MANDATORY_PART_OF_GROUP, jpaAttribute.getDeclaringType()
           .getJavaType().getCanonicalName(), jpaAttribute.getName());
-    if (isPartOfGroup() && isKey())
+    if (hasUserGroupRestriction() && isKey())
       throw new ODataJPAModelException(NOT_SUPPORTED_KEY_PART_OF_GROUP, jpaAttribute.getDeclaringType()
           .getJavaType().getCanonicalName(), jpaAttribute.getName());
   }
@@ -149,18 +171,18 @@ class IntermediateSimpleProperty extends IntermediateProperty {
         else
           constructor = jpaAttribute.getDeclaringType().getJavaType().getConstructor();
         final Object pojo = constructor.newInstance();
-        field.setAccessible(true);
-        final Object value = field.get(pojo);
-        if (value != null)
-          valueString = value.toString();
-      } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
-          | InvocationTargetException e) {
+        if (field.trySetAccessible()) {
+          final Object value = field.get(pojo);
+          if (value != null)
+            valueString = value.toString();
+        }
+      } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
         throw new ODataJPAModelException(ODataJPAModelException.MessageKeys.PROPERTY_DEFAULT_ERROR, e,
             jpaAttribute.getName());
-      } catch (final InstantiationException e) {
+      } catch (final InstantiationException | NoSuchMethodException e) {
         // Class could not be instantiated e.g. abstract class like
-        // Business Partner => default could not be determined
-        // and will be ignored
+        // Business Partner or missing parameter free constructor
+        // => default could not be determined and will be ignored
         LOGGER.debug("Default could not be determined: "
             + jpaAttribute.getDeclaringType().getJavaType().getName()
             + "#"
@@ -173,5 +195,11 @@ class IntermediateSimpleProperty extends IntermediateProperty {
   @Override
   boolean isStream() {
     return streamInfo != null && streamInfo.stream();
+  }
+
+  private Boolean isIdAttribute() {
+    isKey = jpaAttribute instanceof final SingularAttribute<?, ?> singular
+        && singular.isId();
+    return isKey;
   }
 }

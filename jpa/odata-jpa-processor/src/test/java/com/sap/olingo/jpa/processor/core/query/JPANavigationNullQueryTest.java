@@ -1,6 +1,7 @@
 package com.sap.olingo.jpa.processor.core.query;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -41,7 +42,6 @@ import com.sap.olingo.jpa.processor.core.api.JPAClaimsPair;
 import com.sap.olingo.jpa.processor.core.api.JPAODataClaimProvider;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContextAccess;
 import com.sap.olingo.jpa.processor.core.database.JPAODataDatabaseOperations;
-import com.sap.olingo.jpa.processor.core.exception.ODataJPAIllegalAccessException;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAQueryException;
 import com.sap.olingo.jpa.processor.core.filter.JPAFilterExpression;
 import com.sap.olingo.jpa.processor.core.testmodel.BusinessPartnerProtected;
@@ -69,7 +69,7 @@ class JPANavigationNullQueryTest extends TestBase {
 
   @SuppressWarnings("unchecked")
   @BeforeEach
-  public void setup() throws ODataException, ODataJPAIllegalAccessException {
+  void setup() throws ODataException {
     helper = getHelper();
     em = mock(EntityManager.class);
     parent = mock(JPAAbstractQuery.class);
@@ -79,7 +79,7 @@ class JPANavigationNullQueryTest extends TestBase {
     uriResourceItem = mock(UriResourceNavigation.class);
     jpaEntityType = helper.getJPAEntityType(BusinessPartnerProtected.class);
     cq = mock(CriteriaQuery.class);
-    cb = mock(CriteriaBuilder.class); // emf.getCriteriaBuilder();
+    cb = mock(CriteriaBuilder.class);
     subQuery = mock(Subquery.class);
     queryRoot = mock(Root.class);
     from = mock(From.class);
@@ -88,10 +88,9 @@ class JPANavigationNullQueryTest extends TestBase {
     final UriParameter key = mock(UriParameter.class);
 
     when(em.getCriteriaBuilder()).thenReturn(cb);
-    // when(uriResourceItem.getType()).thenReturn(jpaEntityType);
     when(uriResourceItem.getKeyPredicates()).thenReturn(Collections.singletonList(key));
     when(parent.getQuery()).thenReturn(cq);
-    when(cq.subquery(any())).thenReturn(subQuery);
+    when(cq.subquery(any(Class.class))).thenReturn(subQuery);
     when(subQuery.from(BusinessPartnerProtected.class)).thenReturn(queryRoot);
     when(claimsProvider.get("UserId")).thenReturn(Collections.singletonList(new JPAClaimsPair<>("Willi")));
     doReturn(BusinessPartnerProtected.class).when(from).getJavaType();
@@ -148,5 +147,12 @@ class JPANavigationNullQueryTest extends TestBase {
     assertNotNull(cut);
     verify(cb).equal(idPath, idPath);
     verify(cb).equal(userNamePath, "Willi");
+  }
+
+  @Test
+  void testCreateWhereEnhancementReturnsNull() throws ODataApplicationException {
+    cut = new JPANavigationNullQuery(odata, helper.sd, jpaEntityType, em, parent, from, association, Optional.of(
+        claimsProvider), Collections.emptyList());
+    assertNull(cut.createWhereEnhancement(jpaEntityType, from));
   }
 }

@@ -114,8 +114,10 @@ public interface JPAStructuredType extends JPAElement {
    */
   public List<JPACollectionAttribute> getDeclaredCollectionAttributes() throws ODataJPAModelException;
 
+  @CheckForNull
   public JPAPath getPath(final String externalName) throws ODataJPAModelException;
 
+  @CheckForNull
   public JPAPath getPath(final String externalName, final boolean respectIgnore) throws ODataJPAModelException;
 
   /**
@@ -150,7 +152,10 @@ public interface JPAStructuredType extends JPAElement {
    * Determines if the structured type has a super type, that will be part of OData metadata. That is, the method will
    * return null in case the entity has a MappedSuperclass.
    * @return Determined super type or null
+   * @throws ODataJPAModelException
    */
   @CheckForNull
-  public JPAStructuredType getBaseType();
+  public JPAStructuredType getBaseType() throws ODataJPAModelException;
+
+  public List<JPAPath> searchChildPath(final JPAPath selectItemPath) throws ODataJPAModelException;
 }

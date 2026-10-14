@@ -15,8 +15,6 @@ import jakarta.persistence.criteria.Expression;
 
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriParameter;
-import org.apache.olingo.server.api.uri.UriResource;
-import org.apache.olingo.server.api.uri.UriResourceFunction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -29,24 +27,20 @@ import com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivision;
 class JPADBFunctionOperatorTest {
   private CriteriaBuilder cb;
   private JPADBFunctionOperator cut;
-  private UriResourceFunction uriFunction;
   private JPAVisitor jpaVisitor;
   private JPADataBaseFunction jpaFunction;
   private JPAOperationResultParameter jpaResultParam;
   private List<UriParameter> uriParams;
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
 
     cb = mock(CriteriaBuilder.class);
     jpaVisitor = mock(JPAVisitor.class);
     when(jpaVisitor.getCriteriaBuilder()).thenReturn(cb);
-    uriFunction = mock(UriResourceFunction.class);
     jpaFunction = mock(JPADataBaseFunction.class);
     jpaResultParam = mock(JPAOperationResultParameter.class);
     when(jpaFunction.getResultParameter()).thenReturn(jpaResultParam);
-    final List<UriResource> resources = new ArrayList<>();
-    resources.add(uriFunction);
 
     uriParams = new ArrayList<>();
 

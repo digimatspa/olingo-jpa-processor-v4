@@ -1,9 +1,12 @@
 package com.sap.olingo.jpa.processor.core.query;
 
-import java.util.ArrayList;
+import static com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException.MessageKeys.ATTRIBUTE_NOT_FOUND;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import javax.annotation.Nonnull;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -29,10 +32,11 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAElement;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAParameterFacet;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAStructuredType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.processor.cb.ProcessorCriteriaBuilder;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterException;
-import com.sap.olingo.jpa.processor.core.exception.ODataJPAQueryException;
+import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException;
 import com.sap.olingo.jpa.processor.core.filter.JPAInvertibleVisitableExpression;
 
 public final class ExpressionUtility {
@@ -45,12 +49,15 @@ public final class ExpressionUtility {
   public static Expression<Boolean> createEQExpression(final OData odata, final CriteriaBuilder cb,
       final From<?, ?> root, final JPAEntityType jpaEntity, final UriParameter keyPredicate)
       throws ODataJPAFilterException, ODataJPAModelException {
+    try {
+      final JPAPath path = getJPAPath(jpaEntity, keyPredicate.getName());
+      final JPAAttribute attribute = path.getLeaf();
 
-    final JPAPath path = jpaEntity.getPath(keyPredicate.getName());
-    final JPAAttribute attribute = path.getLeaf();
-
-    return cb.equal(convertToCriteriaPath(root, path.getPath()), convertValueOnAttribute(odata, attribute, keyPredicate
-        .getText()));
+      return cb.equal(convertToCriteriaPath(root, path.getPath()), convertValueOnAttribute(odata, attribute,
+          keyPredicate.getText()));
+    } catch (final ODataJPAProcessorException e) {
+      throw new ODataJPAFilterException(e, HttpStatusCode.INTERNAL_SERVER_ERROR);
+    }
 
   }
 
@@ -63,11 +70,12 @@ public final class ExpressionUtility {
    */
   @SuppressWarnings("unchecked")
   public static <T> Path<T> convertToCriteriaPath(final Map<String, From<?, ?>> joinTables, final From<?, ?> root,
-      final List<JPAElement> jpaPath) {
+      final JPAPath jpaPath) {
+
     Path<?> path = root;
-    for (final JPAElement jpaPathElement : jpaPath)
+    for (final JPAElement jpaPathElement : jpaPath.getPath())
       if (jpaPathElement instanceof final JPADescriptionAttribute descriptionAttribute) {
-        final Join<?, ?> join = (Join<?, ?>) joinTables.get(jpaPathElement.getInternalName());
+        final Join<?, ?> join = (Join<?, ?>) joinTables.get(jpaPath.getAlias());
         path = join.get(descriptionAttribute.getDescriptionAttribute().getInternalName());
       } else if (jpaPathElement instanceof JPACollectionAttribute) {
         path = joinTables.get(jpaPathElement.getExternalName());
@@ -85,36 +93,10 @@ public final class ExpressionUtility {
     return (Path<T>) path;
   }
 
-  /**
-   * Converts an OData attribute into an JPA path. Sets the alias to the alias of the OData path of the attribute.
-   * @param root From the path be derived from
-   * @param et OData Entity Type
-   * @param jpaAttributes Attribute to be converted into an JPA path
-   * @return
-   * @throws ODataJPAQueryException
-   */
-  public static List<Path<Object>> convertToCriteriaPathList(final From<?, ?> root, final JPAEntityType et,
-      final List<JPAAttribute> jpaAttributes) throws ODataJPAQueryException {
-
-    try {
-      final List<Path<Object>> result = new ArrayList<>(jpaAttributes.size());
-      for (final JPAAttribute attribute : jpaAttributes) {
-        final JPAPath path = et.getPath(attribute.getExternalName());
-        final Path<Object> p = convertToCriteriaPath(root, path.getPath());
-        p.alias(path.getAlias());
-        result.add(p);
-      }
-      return result;
-    } catch (final ODataJPAModelException e) {
-      throw new ODataJPAQueryException(e, HttpStatusCode.INTERNAL_SERVER_ERROR);
-    }
-  }
-
   public static List<Path<Comparable<?>>> convertToCriteriaPaths(final From<?, ?> from, final List<JPAPath> jpaPaths) {
     return jpaPaths.stream()
         .map(jpaPath -> ExpressionUtility.<Comparable<?>> convertToCriteriaPath(from, jpaPath.getPath()))
         .toList();
-    // .collect(Collectors.toList());
   }
 
   public static Object convertValueOnAttribute(final OData odata, final JPAAttribute attribute, final String value)
@@ -208,4 +190,14 @@ public final class ExpressionUtility {
     return subQueryExpression;
   }
 
+  @Nonnull
+  private static JPAPath getJPAPath(final JPAStructuredType st, final String name) throws ODataJPAModelException,
+      ODataJPAProcessorException {
+
+    final var jpaPath = st.getPath(name);
+    if (jpaPath != null)
+      return jpaPath;
+    else
+      throw new ODataJPAProcessorException(ATTRIBUTE_NOT_FOUND, HttpStatusCode.INTERNAL_SERVER_ERROR, name);
+  }
 }

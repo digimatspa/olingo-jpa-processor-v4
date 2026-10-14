@@ -1,5 +1,7 @@
 package com.sap.olingo.jpa.processor.core.query;
 
+import static com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException.MessageKeys.ATTRIBUTE_NOT_FOUND;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -8,6 +10,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 
+import org.apache.olingo.commons.api.ex.ODataException;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriInfoResource;
@@ -31,18 +34,26 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAStructuredType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
+import com.sap.olingo.jpa.processor.core.api.JPAODataExpandPage;
 import com.sap.olingo.jpa.processor.core.api.JPAODataGroupProvider;
+import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContextAccess;
+import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAQueryException;
 
 public final class JPAExpandItemInfoFactory {
-
   private static final int ST_INDEX = 0;
   private static final int ET_INDEX = 1;
   private static final int PROPERTY_INDEX = 2;
   private static final int PATH_INDEX = 3;
+  private final JPAODataRequestContextAccess requestContext;
+
+  public JPAExpandItemInfoFactory(final JPAODataRequestContextAccess requestContext) {
+    this.requestContext = requestContext;
+  }
 
   public List<JPAExpandItemInfo> buildExpandItemInfo(final JPAServiceDocument sd, final UriInfoResource uriResourceInfo,
-      final List<JPANavigationPropertyInfo> grandParentHops) throws ODataApplicationException {
+      final List<JPANavigationPropertyInfo> grandParentHops, final Optional<JPAKeyBoundary> keyBoundary,
+      final JPAExpandQueryFactory factory) throws ODataException {
 
     final List<JPAExpandItemInfo> itemList = new ArrayList<>();
     final List<UriResource> startResourceList = uriResourceInfo.getUriResourceParts();
@@ -54,7 +65,18 @@ public final class JPAExpandItemInfoFactory {
       final Map<JPAExpandItem, JPAAssociationPath> expandPath = Utility.determineAssociations(sd, startResourceList,
           expandOption);
       for (final Entry<JPAExpandItem, JPAAssociationPath> item : expandPath.entrySet()) {
-        itemList.add(new JPAExpandItemInfo(sd, item.getKey(), item.getValue(), parentHops));
+        final var expandItem = new JPAExpandItemInfo(sd, item.getKey(), item.getValue(), parentHops);
+        final var count = factory.createCountQuery(expandItem, keyBoundary);
+        final var provider = requestContext.getPagingProvider();
+        final Optional<JPAODataExpandPage> page;
+        if (provider.isPresent())
+          page = provider.get().getFirstPageExpand(requestContext.getRequestParameter(),
+              requestContext.getPathInformation(), requestContext.getUriInfo(), item.getKey().getTopOption(), item
+                  .getKey().getSkipOption(),
+              item.getValue().getLeaf(), count, requestContext.getEntityManager());
+        else
+          page = Optional.empty();
+        itemList.add(new JPAExpandItemInfo(expandItem, page));
       }
     }
     return itemList;
@@ -65,6 +87,8 @@ public final class JPAExpandItemInfoFactory {
    * ../Organizations('1')/Comment or<br>
    * ../CollectionDeeps?$select=FirstLevel/SecondLevel or<br>
    * ../CollectionDeeps/FirstLevel
+   * ../CollectionDeeps/FirstLevel/SecondLevel?$select=...,...
+   *
    * @param sd
    * @param uriResourceInfo
    * @param optional
@@ -93,11 +117,12 @@ public final class JPAExpandItemInfoFactory {
           // Moved
         }
       } else {
-
+        // Organizations('1')?$select=Comment
+        // Et/St?$select=Cp
         if (SelectOptionUtil.selectAll(select)) {
           // No navigation, extract all collection attributes
           final JPAStructuredType st = (JPAStructuredType) pathInfo[ST_INDEX];
-          final Set<JPAElement> collectionProperties = new HashSet<>();
+          final Set<JPACollectionAttribute> collectionProperties = new HashSet<>();
           for (final JPAPath path : st.getPathList()) {
             final StringBuilder pathName = new StringBuilder(pathInfo[PATH_INDEX].toString());
             for (final JPAElement pathElement : path.getPath()) {
@@ -105,29 +130,31 @@ public final class JPAExpandItemInfoFactory {
               if (pathElement instanceof final JPAAttribute attribute && attribute.isCollection()) {
                 if (path.isPartOfGroups(groups.isPresent() ? groups.get().getGroups() : new ArrayList<>(0))
                     && !attribute.isTransient()) {
-                  final JPAPath collectionPath = ((JPAEntityType) pathInfo[ET_INDEX])
-                      .getPath(pathName.deleteCharAt(pathName.length() - 1).toString());
-                  collectionProperties.add(collectionPath.getLeaf());
+                  collectionProperties.add(getCollectionPath(pathInfo, pathName));
                 }
                 break;
               }
             }
           }
-          for (final JPAElement pathElement : collectionProperties) {
+          for (final var pathElement : collectionProperties) {
             final JPACollectionExpandWrapper item = new JPACollectionExpandWrapper((JPAEntityType) pathInfo[ET_INDEX],
                 uriResourceInfo);
-            itemList.add(new JPACollectionItemInfo(sd, item, ((JPACollectionAttribute) pathElement)
-                .asAssociation(), grandParentHops));
+            itemList.add(new JPACollectionItemInfo(sd, item, pathElement.asAssociation(), grandParentHops));
           }
         } else {
+          // Et?$select=Cp
+          // Et/St?$select=Cp,Cp
+          // Et/St/St?$select=Cp
+          // Et/St?$select=St/Cp
           final JPAStructuredType st = (JPAStructuredType) pathInfo[ST_INDEX];
           final Set<JPAPath> selectOptions = getCollectionAttributesFromSelection(st, uriResourceInfo
               .getSelectOption());
-          for (final JPAPath path : selectOptions) {
+          final Map<JPAPath, JPAAssociationPath> collectionPaths = Utility.determineAssociations(sd,
+              startResourceList, selectOptions);
+          for (final JPAAssociationPath path : collectionPaths.values()) {
             final JPACollectionExpandWrapper item = new JPACollectionExpandWrapper((JPAEntityType) pathInfo[ET_INDEX],
-                uriResourceInfo);
-            itemList.add(new JPACollectionItemInfo(sd, item, ((JPACollectionAttribute) path.getLeaf())
-                .asAssociation(), grandParentHops));
+                uriResourceInfo, path);
+            itemList.add(new JPACollectionItemInfo(sd, item, path, grandParentHops));
           }
         }
       }
@@ -135,6 +162,17 @@ public final class JPAExpandItemInfoFactory {
       throw new ODataJPAQueryException(e, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
     return itemList;
+  }
+
+  private JPACollectionAttribute getCollectionPath(final Object[] pathInfo, final StringBuilder pathName)
+      throws ODataJPAModelException, ODataJPAProcessorException {
+
+    final var name = pathName.deleteCharAt(pathName.length() - 1).toString();
+    final JPAPath collectionPath = ((JPAEntityType) pathInfo[ET_INDEX]).getPath(name);
+    if (collectionPath != null)
+      return (JPACollectionAttribute) collectionPath.getLeaf();
+    else
+      throw new ODataJPAProcessorException(ATTRIBUTE_NOT_FOUND, HttpStatusCode.INTERNAL_SERVER_ERROR, name);
   }
 
   private Object[] determineNavigationElements(final JPAServiceDocument sd,
@@ -171,7 +209,7 @@ public final class JPAExpandItemInfoFactory {
     return result;
   }
 
-  protected Set<JPAPath> getCollectionAttributesFromSelection(final JPAStructuredType jpaEntity,
+  private Set<JPAPath> getCollectionAttributesFromSelection(final JPAStructuredType jpaEntity,
       final SelectOption select) throws ODataApplicationException, ODataJPAModelException {
 
     final Set<JPAPath> collectionAttributes = new HashSet<>();

@@ -4,7 +4,6 @@ import java.net.URISyntaxException;
 
 import org.apache.olingo.commons.api.data.Annotatable;
 import org.apache.olingo.commons.api.data.ContextURL;
-import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.data.Property;
 import org.apache.olingo.commons.api.edm.EdmBindingTarget;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveType;
@@ -17,7 +16,7 @@ import org.apache.olingo.server.api.serializer.ODataSerializer;
 import org.apache.olingo.server.api.serializer.PrimitiveSerializerOptions;
 import org.apache.olingo.server.api.serializer.SerializerException;
 import org.apache.olingo.server.api.serializer.SerializerResult;
-import org.apache.olingo.server.api.uri.UriInfo;
+import org.apache.olingo.server.api.uri.UriInfoResource;
 import org.apache.olingo.server.api.uri.UriResourceProperty;
 
 import com.sap.olingo.jpa.processor.core.api.JPAODataSessionContextAccess;
@@ -29,7 +28,8 @@ final class JPASerializePrimitive extends JPASerializePrimitiveAbstract {
   private final ContentType responseFormat;
   private final JPAODataSessionContextAccess serviceContext;
 
-  JPASerializePrimitive(final ServiceMetadata serviceMetadata, final ODataSerializer serializer, final UriInfo uriInfo,
+  JPASerializePrimitive(final ServiceMetadata serviceMetadata, final ODataSerializer serializer,
+      final UriInfoResource uriInfo,
       final ContentType responseFormat, final JPAODataSessionContextAccess context) {
 
     super(serviceMetadata, uriInfo);
@@ -61,17 +61,16 @@ final class JPASerializePrimitive extends JPASerializePrimitiveAbstract {
   }
 
   @Override
-  public SerializerResult serialize(final ODataRequest request, final EntityCollection result)
+  public SerializerResult serialize(final ODataRequest request, final JPAEntityCollectionExtension result)
       throws SerializerException, ODataJPASerializerException {
 
     final EdmBindingTarget targetEdmBindingTarget = Utility.determineBindingTarget(uriInfo.getUriResourceParts());
     final UriResourceProperty uriProperty = (UriResourceProperty) uriInfo.getUriResourceParts().get(uriInfo
         .getUriResourceParts().size() - 1);
-
-    final JPAPrimitivePropertyInfo property = determinePrimitiveProperty(result, uriInfo.getUriResourceParts());
-    final EdmPrimitiveType edmPropertyType = (EdmPrimitiveType) uriProperty.getProperty().getType();
-
     try {
+      final JPAPrimitivePropertyInfo property = determinePrimitiveProperty(result, uriInfo.getUriResourceParts());
+      final EdmPrimitiveType edmPropertyType = (EdmPrimitiveType) uriProperty.getProperty().getType();
+
       final ContextURL contextUrl = ContextURL.with()
           .serviceRoot(buildServiceRoot(request, serviceContext))
           .entitySetOrSingletonOrType(targetEdmBindingTarget.getName())

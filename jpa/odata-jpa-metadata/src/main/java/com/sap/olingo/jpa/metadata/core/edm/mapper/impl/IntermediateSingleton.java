@@ -3,7 +3,6 @@ package com.sap.olingo.jpa.metadata.core.edm.mapper.impl;
 import java.util.List;
 
 import org.apache.olingo.commons.api.edm.provider.CsdlAnnotation;
-import org.apache.olingo.commons.api.edm.provider.CsdlEntityType;
 import org.apache.olingo.commons.api.edm.provider.CsdlSingleton;
 
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.Applicability;
@@ -31,6 +30,13 @@ final class IntermediateSingleton extends IntermediateTopLevelEntity implements 
     setExternalName(nameBuilder.buildSingletonName(et.getEdmItem()));
   }
 
+  private IntermediateSingleton(final IntermediateSingleton source,
+      final IntermediateEntityType<?> et) throws ODataJPAModelException {
+    super(source.nameBuilder, et, source.getAnnotationInformation());
+    setExternalName(source.getExternalName());
+    lazyBuildEdmItem();
+  }
+
   @Override
   public void addAnnotations(final List<CsdlAnnotation> annotations) {
     this.edmAnnotations.addAll(annotations);
@@ -41,9 +47,9 @@ final class IntermediateSingleton extends IntermediateTopLevelEntity implements 
     if (edmSingleton == null) {
       retrieveAnnotations(this, Applicability.SINGLETON);
       postProcessor.processSingleton(this);
-      edmSingleton = new CsdlSingleton();
 
-      final CsdlEntityType edmEt = ((IntermediateEntityType<?>) getODataEntityType()).getEdmItem();
+      edmSingleton = new CsdlSingleton();
+      final var edmEt = ((IntermediateEntityType<?>) getODataEntityType()).getEdmItem();
       edmSingleton.setName(getExternalName());
       edmSingleton.setType(buildFQN(edmEt.getName()));
       edmSingleton.setMapping(null);
@@ -70,6 +76,14 @@ final class IntermediateSingleton extends IntermediateTopLevelEntity implements 
       lazyBuildEdmItem();
     }
     return filterAnnotation(alias, term);
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  protected <T extends IntermediateModelElement> T asUserGroupRestricted(final List<String> userGroups,
+      final boolean hideRestrictedProperties) throws ODataJPAModelException {
+    lazyBuildEdmItem();
+    return (T) new IntermediateSingleton(this, entityType.asUserGroupRestricted(userGroups, hideRestrictedProperties));
   }
 
 }

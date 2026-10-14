@@ -174,7 +174,7 @@ public final class JPAODataRequestProcessor
 
     try {
       final JPARequestProcessor processor = factory.createProcessor(uriInfo, responseFormat, request.getAllHeaders(),
-          requestContext);
+          requestContext, new JPAODataPathInformation(request));
       processor.retrieveData(request, response, responseFormat);
     } catch (ODataApplicationException | ODataLibraryException e) {
       requestContext.getDebugger().debug(this, e.getMessage());
@@ -190,7 +190,7 @@ public final class JPAODataRequestProcessor
       final ContentType responseFormat) throws ODataApplicationException, ODataLibraryException {
     try {
       final JPARequestProcessor processor = factory.createProcessor(uriInfo, responseFormat, request.getAllHeaders(),
-          requestContext);
+          requestContext, new JPAODataPathInformation(request));
       processor.retrieveData(request, response, responseFormat);
     } catch (ODataApplicationException | ODataLibraryException e) {
       requestContext.getDebugger().debug(this, e.getMessage());
@@ -207,7 +207,7 @@ public final class JPAODataRequestProcessor
 
     try {
       final JPARequestProcessor processor = factory.createProcessor(uriInfo, responseFormat, request.getAllHeaders(),
-          requestContext);
+          requestContext, new JPAODataPathInformation(request));
       processor.retrieveData(request, response, responseFormat);
     } catch (ODataApplicationException | ODataLibraryException e) {
       requestContext.getDebugger().debug(this, e.getMessage());
@@ -224,7 +224,7 @@ public final class JPAODataRequestProcessor
 
     try {
       final JPARequestProcessor processor = factory.createProcessor(uriInfo, responseFormat, request.getAllHeaders(),
-          requestContext);
+          requestContext, new JPAODataPathInformation(request));
       processor.retrieveData(request, response, responseFormat);
     } catch (ODataApplicationException | ODataLibraryException e) {
       requestContext.getDebugger().debug(this, e.getMessage());
@@ -240,7 +240,7 @@ public final class JPAODataRequestProcessor
       final ContentType responseFormat) throws ODataApplicationException, ODataLibraryException {
     try {
       final JPARequestProcessor processor = factory.createProcessor(uriInfo, responseFormat, request.getAllHeaders(),
-          requestContext);
+          requestContext, new JPAODataPathInformation(request));
       processor.retrieveData(request, response, responseFormat);
     } catch (ODataApplicationException | ODataLibraryException e) {
       requestContext.getDebugger().debug(this, e.getMessage());
@@ -257,7 +257,7 @@ public final class JPAODataRequestProcessor
 
     try {
       final JPARequestProcessor processor = factory.createProcessor(uriInfo, responseFormat, request.getAllHeaders(),
-          requestContext);
+          requestContext, new JPAODataPathInformation(request));
       processor.retrieveData(request, response, responseFormat);
     } catch (ODataApplicationException | ODataLibraryException e) {
       requestContext.getDebugger().debug(this, e.getMessage());
@@ -274,7 +274,7 @@ public final class JPAODataRequestProcessor
 
     try {
       final JPARequestProcessor processor = factory.createProcessor(uriInfo, responseFormat, request.getAllHeaders(),
-          requestContext);
+          requestContext, new JPAODataPathInformation(request));
       processor.retrieveData(request, response, responseFormat);
     } catch (ODataApplicationException | ODataLibraryException e) {
       requestContext.getDebugger().debug(this, e.getMessage());
@@ -292,7 +292,7 @@ public final class JPAODataRequestProcessor
 
     try {
       final JPARequestProcessor processor = factory.createProcessor(uriInfo, responseFormat, request.getAllHeaders(),
-          requestContext);
+          requestContext, new JPAODataPathInformation(request));
       processor.retrieveData(request, response, responseFormat);
     } catch (ODataApplicationException | ODataLibraryException e) {
       requestContext.getDebugger().debug(this, e.getMessage());
@@ -423,8 +423,7 @@ public final class JPAODataRequestProcessor
       final ContentType requestFormat) throws ODataApplicationException, ODataLibraryException {
     try {
       final JPAActionRequestProcessor processor = this.factory.createActionProcessor(uriInfo, null, request
-          .getAllHeaders(),
-          requestContext);
+          .getAllHeaders(), requestContext);
       processor.performAction(request, response, requestFormat);
     } catch (ODataApplicationException | ODataLibraryException e) {
       throw e;
@@ -439,7 +438,7 @@ public final class JPAODataRequestProcessor
       throws ODataApplicationException {
     try {
       final JPARequestProcessor processor = factory.createProcessor(uriInfo, ContentType.TEXT_PLAIN, request
-          .getAllHeaders(), requestContext);
+          .getAllHeaders(), requestContext, new JPAODataPathInformation(request));
       processor.retrieveData(request, response, ContentType.TEXT_PLAIN);
     } catch (final ODataApplicationException e) {
       throw e;

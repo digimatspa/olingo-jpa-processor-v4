@@ -1,6 +1,7 @@
 package com.sap.olingo.jpa.processor.core.util;
 
 import java.lang.reflect.AnnotatedElement;
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.persistence.EntityManagerFactory;
@@ -21,15 +22,18 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.impl.JPADefaultEdmNameBuilder;
 
 public class TestHelper {
-  final private Metamodel jpaMetamodel;
-  final public JPAServiceDocument sd;
-  final public JPAEdmProvider edmProvider;
+  private final Metamodel jpaMetamodel;
+  public final JPAServiceDocument sd;
+  public final JPAEdmProvider edmProvider;
 
   public TestHelper(final EntityManagerFactory emf, final String namespace) throws ODataException {
     this.jpaMetamodel = emf.getMetamodel();
-    edmProvider = new JPAEdmProvider(namespace, emf, null, TestBase.enumPackages);
+    edmProvider = new JPAEdmProvider(emf.getMetamodel(), new TestWrapperChecker(), null, TestBase.enumPackages,
+        new JPADefaultEdmNameBuilder(namespace), List.of());
+
     sd = edmProvider.getServiceDocument();
     sd.getEdmEntityContainer();
   }
@@ -75,9 +79,15 @@ public class TestHelper {
     return jpaEntity.getAttribute(attributeInternalName);
   }
 
+  public Optional<JPAAttribute> getJPAAttribute(final Class<?> clazz, final String attributeInternalName)
+      throws ODataJPAModelException {
+    final JPAEntityType jpaEntity = sd.getEntity(clazz);
+    return jpaEntity.getAttribute(attributeInternalName);
+  }
+
   public EdmFunction getStoredProcedure(final EntityType<?> jpaEntityType, final String string) {
     if (jpaEntityType.getJavaType() instanceof AnnotatedElement) {
-      final EdmFunctions jpaStoredProcedureList = ((AnnotatedElement) jpaEntityType.getJavaType())
+      final EdmFunctions jpaStoredProcedureList = jpaEntityType.getJavaType()
           .getAnnotation(EdmFunctions.class);
       if (jpaStoredProcedureList != null) {
         for (final EdmFunction jpaStoredProcedure : jpaStoredProcedureList.value()) {

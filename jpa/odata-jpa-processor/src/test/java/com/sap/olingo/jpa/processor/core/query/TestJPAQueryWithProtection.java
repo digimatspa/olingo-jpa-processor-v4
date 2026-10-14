@@ -42,7 +42,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ValueNode;
 import com.sap.olingo.jpa.metadata.api.JPAEdmProvider;
 import com.sap.olingo.jpa.metadata.api.JPARequestParameterMap;
-import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAElement;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
@@ -51,6 +50,7 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAProtectionInfo;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.processor.core.api.JPAClaimsPair;
+import com.sap.olingo.jpa.processor.core.api.JPAODataApiVersionAccess;
 import com.sap.olingo.jpa.processor.core.api.JPAODataClaimsProvider;
 import com.sap.olingo.jpa.processor.core.api.JPAODataSessionContextAccess;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAIllegalAccessException;
@@ -78,10 +78,15 @@ class TestJPAQueryWithProtection extends TestQueryBase {
   @BeforeEach
   public void setup() throws ODataException, ODataJPAIllegalAccessException {
     super.setup();
+
+    final var version = context.getApiVersion(JPAODataApiVersionAccess.DEFAULT_VERSION);
+    final var versionSpy = spy(version);
     contextSpy = spy(context);
-    final JPAEdmProvider providerSpy = spy(context.getEdmProvider());
-    sdSpy = spy(context.getEdmProvider().getServiceDocument());
-    when(contextSpy.getEdmProvider()).thenReturn(providerSpy);
+    final JPAEdmProvider providerSpy = spy(version.getEdmProvider());
+    sdSpy = spy(version.getEdmProvider().getServiceDocument());
+
+    when(contextSpy.getApiVersion(JPAODataApiVersionAccess.DEFAULT_VERSION)).thenReturn(versionSpy);
+    when(versionSpy.getEdmProvider()).thenReturn(providerSpy);
     when(providerSpy.getServiceDocument()).thenReturn(sdSpy);
 
     final EntityManager emSpy = spy(emf.createEntityManager());
@@ -308,7 +313,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(pathList).when(aSpy).getProtectionPath("UserId");
     attributes.add(aSpy);
 
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     assertEqual(act);
   }
 
@@ -329,7 +334,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(pathList).when(aSpy).getProtectionPath("UserId");
     attributes.add(aSpy);
 
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     assertLike(act);
   }
 
@@ -349,7 +354,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(pathList).when(aSpy).getProtectionPath("UserId");
     attributes.add(aSpy);
 
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     assertBetween(act);
   }
 
@@ -370,7 +375,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(pathList).when(aSpy).getProtectionPath("UserId");
     attributes.add(aSpy);
 
-    assertThrows(ODataJPAQueryException.class, () -> ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(
+    assertThrows(ODataJPAQueryException.class, () -> cut.createProtectionWhere(Optional.of(
         claims)));
 
   }
@@ -392,7 +397,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(pathList).when(aSpy).getProtectionPath(claimName);
     attributes.add(aSpy);
 
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     assertEquals(BooleanOperator.OR, ((CompoundExpressionImpl) act).getOperator());
     for (final Expression<?> part : ((CompoundExpressionImpl) act).getChildExpressions())
       assertEqual(part);
@@ -414,7 +419,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(pathList).when(aSpy).getProtectionPath(claimName);
     attributes.add(aSpy);
 
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     assertEqual(act);
   }
 
@@ -434,7 +439,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(pathList).when(aSpy).getProtectionPath(claimName);
     attributes.add(aSpy);
 
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     assertBetween(act);
   }
 
@@ -455,7 +460,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(pathList).when(aSpy).getProtectionPath(claimName);
     attributes.add(aSpy);
 
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     verify(cbSpy).and(any(), any());
     for (final Expression<?> part : ((CompoundExpressionImpl) act).getChildExpressions())
       assertEqual(part);
@@ -478,7 +483,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(pathList).when(aSpy).getProtectionPath(claimName);
     attributes.add(aSpy);
 
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     verify(cbSpy).and(any(), any());
     for (final Expression<?> part : ((Predicate) act).getExpressions())
       assertEqual(part);
@@ -492,7 +497,7 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     claims.add("BuildingNumber", new JPAClaimsPair<>("DEV"));
     claims.add("Floor", new JPAClaimsPair<>(Short.valueOf("12")));
     claims.add("RoomNumber", new JPAClaimsPair<>("*"));
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     assertNotNull(act);
     assertEquals(2, ((Predicate) act).getExpressions().size());
     verify(cbSpy).and(any(), any());
@@ -507,19 +512,19 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     claims.add("Floor", new JPAClaimsPair<>(Short.valueOf("12")));
     claims.add("RoomNumber", new JPAClaimsPair<>("*"));
     claims.add("RoomNumber", new JPAClaimsPair<>(1, 10));
-    ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    cut.createProtectionWhere(Optional.of(claims));
     verify(cbSpy).and(any(), any());
   }
 
   @Test
-  void testAllowAllOnMultipleClaims() throws ODataException, JPANoSelectionException, ODataJPAQueryException {
+  void testAllowAllOnMultipleClaims() throws ODataException, JPANoSelectionException {
     prepareTestDeepProtected();
     when(etSpy.getProtections()).thenCallRealMethod();
     final JPAODataClaimsProvider claims = new JPAODataClaimsProvider();
     claims.add("BuildingNumber", new JPAClaimsPair<>(JPAClaimsPair.ALL));
     claims.add("Floor", new JPAClaimsPair<>(Short.valueOf("12")));
     claims.add("RoomNumber", new JPAClaimsPair<>(JPAClaimsPair.ALL));
-    final Expression<Boolean> act = ((JPAJoinQuery) cut).createProtectionWhere(Optional.of(claims));
+    final Expression<Boolean> act = cut.createProtectionWhere(Optional.of(claims));
     assertNotNull(act);
     verify(cbSpy, times(0)).and(any(), any());
   }
@@ -624,14 +629,14 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(etSpy).when(sdSpy).getEntity("BusinessPartnerProtecteds");
     doReturn(etSpy).when(sdSpy).getEntity(odataType);
     final JPAODataInternalRequestContext requestContext = new JPAODataInternalRequestContext(externalContext,
-        contextSpy);
+        contextSpy, odata);
     try {
       requestContext.setUriInfo(uriInfo);
     } catch (final ODataJPAIllegalAccessException e) {
       fail();
     }
     cut = new JPAJoinQuery(null, requestContext);
-    cut.createFromClause(new ArrayList<JPAAssociationPath>(1), new ArrayList<JPAPath>(), cut.cq, null);
+    cut.createFromClause(new ArrayList<>(1), new ArrayList<>(), cut.cq, null);
   }
 
   private void prepareTestDeepProtected() throws ODataException, JPANoSelectionException {
@@ -649,13 +654,13 @@ class TestJPAQueryWithProtection extends TestQueryBase {
     doReturn(etSpy).when(sdSpy).getEntity(odataType);
     doReturn(null).when(etSpy).getAssociation("");
     final JPAODataInternalRequestContext requestContext = new JPAODataInternalRequestContext(externalContext,
-        contextSpy);
+        contextSpy, odata);
     try {
       requestContext.setUriInfo(uriInfo);
     } catch (final ODataJPAIllegalAccessException e) {
       fail();
     }
     cut = new JPAJoinQuery(null, requestContext);
-    cut.createFromClause(new ArrayList<JPAAssociationPath>(1), new ArrayList<JPAPath>(), cut.cq, null);
+    cut.createFromClause(new ArrayList<>(1), new ArrayList<>(), cut.cq, null);
   }
 }

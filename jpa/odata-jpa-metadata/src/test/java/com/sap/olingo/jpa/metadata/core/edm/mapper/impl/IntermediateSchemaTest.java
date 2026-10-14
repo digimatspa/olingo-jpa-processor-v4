@@ -1,6 +1,7 @@
 package com.sap.olingo.jpa.metadata.core.edm.mapper.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 
 import jakarta.persistence.metamodel.EntityType;
 import jakarta.persistence.metamodel.Metamodel;
@@ -28,6 +30,7 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelExcept
 import com.sap.olingo.jpa.processor.core.errormodel.MissingCardinalityAnnotation;
 import com.sap.olingo.jpa.processor.core.testmodel.ABCClassification;
 import com.sap.olingo.jpa.processor.core.testmodel.AccessRights;
+import com.sap.olingo.jpa.processor.core.testmodel.UserType;
 import com.sap.olingo.jpa.processor.core.util.TestDataConstants;
 
 class IntermediateSchemaTest extends TestMappingRoot {
@@ -39,7 +42,8 @@ class IntermediateSchemaTest extends TestMappingRoot {
     reflections = mock(Reflections.class);
     when(reflections.getTypesAnnotatedWith(EdmEnumeration.class)).thenReturn(new HashSet<>(Arrays.asList(
         ABCClassification.class,
-        AccessRights.class)));
+        AccessRights.class,
+        UserType.class)));
     annotationInfo = new IntermediateAnnotationInformation(new ArrayList<>());
   }
 
@@ -47,14 +51,14 @@ class IntermediateSchemaTest extends TestMappingRoot {
   void checkSchemaCanBeCreated() throws ODataJPAModelException {
 
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     assertNotNull(schema);
   }
 
   @Test
   void checkSchemaGetAllEntityTypes() throws ODataJPAModelException {
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     assertEquals(TestDataConstants.NO_ENTITY_TYPES.value, schema.getEdmItem().getEntityTypes().size(),
         "Wrong number of entities");
   }
@@ -62,7 +66,7 @@ class IntermediateSchemaTest extends TestMappingRoot {
   @Test
   void checkSchemaGetEntityTypeByNameNotNull() throws ODataJPAModelException {
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     assertNotNull(schema.getEdmItem().getEntityType("BusinessPartner"));
   }
 
@@ -72,37 +76,37 @@ class IntermediateSchemaTest extends TestMappingRoot {
     final FullQualifiedName fqn = new FullQualifiedName(ADMIN_CANONICAL_NAME, ADDR_CANONICAL_NAME);
     when(enumType.getFullQualifiedName()).thenReturn(fqn);
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     assertEquals("BusinessPartner", schema.getEdmItem().getEntityType("BusinessPartner").getName());
   }
 
   @Test
   void checkSchemaGetAllComplexTypes() throws ODataJPAModelException {
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     // ChangeInformation,CommunicationData,AdministrativeInformation,PostalAddressData
-    assertEquals(TestDataConstants.NO_COMPLEXT_TYPES.value, schema.getEdmItem().getComplexTypes().size(),
+    assertEquals(TestDataConstants.NO_COMPLEX_TYPES.value, schema.getEdmItem().getComplexTypes().size(),
         "Wrong number of complex types");
   }
 
   @Test
   void checkSchemaGetComplexTypeByNameNotNull() throws ODataJPAModelException {
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     assertNotNull(schema.getEdmItem().getComplexType("CommunicationData"));
   }
 
   @Test
   void checkSchemaGetComplexTypeByNameRightEntity() throws ODataJPAModelException {
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     assertEquals("CommunicationData", schema.getEdmItem().getComplexType("CommunicationData").getName());
   }
 
   @Test
   void checkSchemaGetAllFunctions() throws ODataJPAModelException {
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     assertEquals(10, schema.getEdmItem().getFunctions().size(), "Wrong number of entities");
   }
 
@@ -111,7 +115,7 @@ class IntermediateSchemaTest extends TestMappingRoot {
     final EdmEnumType type = mock(EdmEnumType.class);
     final FullQualifiedName fqn = new FullQualifiedName(PUNIT_NAME, "ABCClassification");
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     when(type.getFullQualifiedName()).thenReturn(fqn);
     assertNotNull(schema.getEnumerationType(type));
   }
@@ -121,7 +125,7 @@ class IntermediateSchemaTest extends TestMappingRoot {
     final EdmEnumType type = mock(EdmEnumType.class);
     final FullQualifiedName fqn = new FullQualifiedName(PUNIT_NAME, "Classification");
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
-        .getMetamodel(), reflections, annotationInfo);
+        .getMetamodel(), reflections, annotationInfo, true);
     when(type.getFullQualifiedName()).thenReturn(fqn);
     assertNull(schema.getEnumerationType(type));
   }
@@ -136,9 +140,9 @@ class IntermediateSchemaTest extends TestMappingRoot {
     when(jpaEt.getDeclaredAttributes()).thenThrow(NullPointerException.class);
 
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), jpaModel,
-        reflections, annotationInfo);
+        reflections, annotationInfo, true);
 
-    final ODataJPAModelException act = assertThrows(ODataJPAModelException.class, () -> schema.lazyBuildEdmItem());
+    final ODataJPAModelException act = assertThrows(ODataJPAModelException.class, schema::lazyBuildEdmItem);
     assertTrue(act.getCause() instanceof NullPointerException);
   }
 
@@ -152,9 +156,27 @@ class IntermediateSchemaTest extends TestMappingRoot {
     doReturn(MissingCardinalityAnnotation.class).when(jpaEt).getJavaType();
 
     final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), jpaModel,
-        reflections, annotationInfo);
+        reflections, annotationInfo, true);
 
-    final ODataJPAModelException act = assertThrows(ODataJPAModelException.class, () -> schema.lazyBuildEdmItem());
+    final ODataJPAModelException act = assertThrows(ODataJPAModelException.class, schema::lazyBuildEdmItem);
     assertNull(act.getCause());
+  }
+
+  @Test
+  void checkEmfIsWrapped() throws ODataJPAModelException {
+    final Metamodel jpaModel = mock(Metamodel.class);
+    final IntermediateSchema cut = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), jpaModel,
+        reflections, annotationInfo, false);
+
+    assertFalse(cut.emfIsWrapped());
+  }
+
+  @Test
+  void checkCopyConstructor() throws ODataJPAModelException {
+    final IntermediateSchema schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf
+        .getMetamodel(), reflections, annotationInfo, true);
+
+    final var cut = (IntermediateSchema) schema.asUserGroupRestricted(List.of("Manager"), true);
+    assertTrue(cut.emfIsWrapped());
   }
 }

@@ -7,17 +7,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import jakarta.persistence.criteria.AbstractQuery;
 import jakarta.persistence.criteria.CollectionJoin;
 import jakarta.persistence.criteria.CommonAbstractCriteria;
 import jakarta.persistence.criteria.CompoundSelection;
 import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.ListJoin;
@@ -30,7 +29,9 @@ import jakarta.persistence.criteria.SetJoin;
 import jakarta.persistence.criteria.Subquery;
 import jakarta.persistence.metamodel.EntityType;
 
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.processor.cb.ProcessorCriteriaQuery;
+import com.sap.olingo.jpa.processor.cb.ProcessorSqlPatternProvider;
 import com.sap.olingo.jpa.processor.cb.ProcessorSubquery;
 import com.sap.olingo.jpa.processor.cb.exceptions.NotImplementedException;
 import com.sap.olingo.jpa.processor.cb.joiner.SqlConvertible;
@@ -45,21 +46,18 @@ import com.sap.olingo.jpa.processor.cb.joiner.SqlConvertible;
  *
  * @param <T> the type of the selection item.
  */
-class SubqueryImpl<T> implements ProcessorSubquery<T>, SqlConvertible {
+class SubqueryImpl<T> extends Pageable implements ProcessorSubquery<T>, SqlConvertible {
   private final Class<T> type;
-  private final CriteriaQuery<?> parent;
+  private final CommonAbstractCriteria parent;
   private final ProcessorCriteriaQuery<T> inner;
-  private Optional<Integer> maxResult;
-  private Optional<Integer> firstResult;
 
-  SubqueryImpl(@Nonnull final Class<T> type, @Nonnull final CriteriaQuery<?> parent, final AliasBuilder ab,
-      final CriteriaBuilder cb) {
-    super();
+  SubqueryImpl(@Nonnull final Class<T> type, @Nonnull final CommonAbstractCriteria parent,
+      final AliasBuilder aliasBuilder,
+      final CriteriaBuilder cb, final ProcessorSqlPatternProvider sqlPattern, final JPAServiceDocument sd) {
+    super(sqlPattern);
     this.type = Objects.requireNonNull(type);
     this.parent = Objects.requireNonNull(parent);
-    this.inner = new CriteriaQueryImpl<>(type, ((CriteriaQueryImpl<?>) parent).getServiceDocument(), ab, cb);
-    maxResult = Optional.empty();
-    firstResult = Optional.empty();
+    this.inner = new CriteriaQueryImpl<>(type, sd, aliasBuilder, cb, sqlPattern);
   }
 
   @Override
@@ -146,9 +144,17 @@ class SubqueryImpl<T> implements ProcessorSubquery<T>, SqlConvertible {
     throw new NotImplementedException();
   }
 
+  /**
+   * Return the query of which this is a subquery.
+   * This must be a CriteriaQuery or a Subquery.
+   * Not supported for subqueries of update or delete
+   * @return the enclosing query or subquery
+   */
   @Override
   public AbstractQuery<?> getParent() {
-    return parent;
+    if (!(parent instanceof AbstractQuery))
+      throw new IllegalStateException("Only supported for sub-queries of queries");
+    return (AbstractQuery<?>) parent;
   }
 
   @Override
@@ -307,22 +313,22 @@ class SubqueryImpl<T> implements ProcessorSubquery<T>, SqlConvertible {
   }
 
   @Override
-  public ProcessorSubquery<T> setMaxResults(final Integer maxResult) {
-    this.maxResult = Optional.ofNullable(maxResult);
+  public ProcessorSubquery<T> setMaxResults(@Nullable final Integer maxResult) {
+    super.setNumberOfResults(maxResult);
     return this;
   }
 
   @Override
   public ProcessorSubquery<T> setFirstResult(final Integer startPosition) {
-    this.firstResult = Optional.ofNullable(startPosition);
+    super.setStartResult(startPosition);
     return this;
   }
 
   @Override
   public StringBuilder asSQL(@Nonnull final StringBuilder statement) {
-    return ((SqlConvertible) inner).asSQL(statement)
-        .append(maxResult.map(i -> " LIMIT " + i).orElse(""))
-        .append(firstResult.map(i -> " OFFSET " + i).orElse(""));
+    var innerSql = ((SqlConvertible) inner).asSQL(statement);
+    paging(innerSql);
+    return innerSql;
   }
 
   @Override

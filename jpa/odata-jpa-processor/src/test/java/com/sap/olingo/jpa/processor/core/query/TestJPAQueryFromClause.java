@@ -2,8 +2,8 @@ package com.sap.olingo.jpa.processor.core.query;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -12,17 +12,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import jakarta.persistence.criteria.From;
 import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Root;
 
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.edm.EdmProperty;
 import org.apache.olingo.commons.api.ex.ODataException;
+import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriResource;
@@ -32,10 +30,7 @@ import org.apache.olingo.server.api.uri.UriResourcePrimitiveProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.sap.olingo.jpa.metadata.api.JPAEdmProvider;
 import com.sap.olingo.jpa.metadata.api.JPARequestParameterMap;
-import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
-import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
@@ -45,7 +40,8 @@ import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContext;
 import com.sap.olingo.jpa.processor.core.api.JPAODataSessionContextAccess;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAIllegalAccessException;
 import com.sap.olingo.jpa.processor.core.processor.JPAODataInternalRequestContext;
-import com.sap.olingo.jpa.processor.core.testmodel.Organization;
+import com.sap.olingo.jpa.processor.core.properties.JPAProcessorAttribute;
+import com.sap.olingo.jpa.processor.core.properties.JPAProcessorSimpleAttribute;
 import com.sap.olingo.jpa.processor.core.util.TestBase;
 import com.sap.olingo.jpa.processor.core.util.TestHelper;
 
@@ -53,9 +49,11 @@ class TestJPAQueryFromClause extends TestBase {
   private JPAAbstractJoinQuery cut;
   private JPAEntityType jpaEntityType;
   private JPAODataSessionContextAccess sessionContext;
+  private OData odata;
 
   @BeforeEach
   void setup() throws ODataException, ODataJPAIllegalAccessException {
+    odata = mock(OData.class);
     final UriInfo uriInfo = mock(UriInfo.class);
     final EdmEntitySet odataEs = mock(EdmEntitySet.class);
     final EdmEntityType odataType = mock(EdmEntityType.class);
@@ -74,14 +72,13 @@ class TestJPAQueryFromClause extends TestBase {
 
     helper = new TestHelper(emf, PUNIT_NAME);
     jpaEntityType = helper.getJPAEntityType("Organizations");
-    sessionContext = new JPAODataContextAccessDouble(new JPAEdmProvider(PUNIT_NAME, emf, null, TestBase.enumPackages),
-        dataSource, null, null);
+    sessionContext = new JPAODataContextAccessDouble(helper.edmProvider, emf, dataSource, null, null, null);
     createHeaders();
     final JPAODataRequestContext externalContext = mock(JPAODataRequestContext.class);
     when(externalContext.getEntityManager()).thenReturn(emf.createEntityManager());
     when(externalContext.getRequestParameter()).thenReturn(mock(JPARequestParameterMap.class));
     final JPAODataInternalRequestContext requestContext = new JPAODataInternalRequestContext(externalContext,
-        sessionContext);
+        sessionContext, odata);
     requestContext.setUriInfo(uriInfo);
     cut = new JPAJoinQuery(null, requestContext);
   }
@@ -95,88 +92,43 @@ class TestJPAQueryFromClause extends TestBase {
   }
 
   @Test
-  void checkFromListOrderByContainsOne() throws ODataJPAModelException, ODataApplicationException,
+  void checkFromListOrderByContainsOne() throws ODataApplicationException,
       JPANoSelectionException {
-    final List<JPAAssociationPath> orderBy = new ArrayList<>();
-    final JPAAssociationPath exp = buildRoleAssociationPath(orderBy);
+    final List<JPAProcessorAttribute> orderBy = new ArrayList<>();
+    final JPAProcessorAttribute exp = buildRoleAssociationPath(orderBy);
 
     final Map<String, From<?, ?>> act = cut.createFromClause(orderBy, new ArrayList<>(), cut.cq, null);
     assertNotNull(act.get(exp.getAlias()));
   }
 
   @Test
-  void checkFromListOrderByOuterJoinOne() throws ODataJPAModelException, ODataApplicationException,
-      JPANoSelectionException {
-    final List<JPAAssociationPath> orderBy = new ArrayList<>();
-    buildRoleAssociationPath(orderBy);
-
-    final Map<String, From<?, ?>> act = cut.createFromClause(orderBy, new ArrayList<>(), cut.cq, null);
-
-    @SuppressWarnings("unchecked")
-    final Root<Organization> root = (Root<Organization>) act.get(jpaEntityType.getExternalFQN()
-        .getFullQualifiedNameAsString());
-    final Set<Join<Organization, ?>> joins = root.getJoins();
-    assertEquals(1, joins.size());
-
-    for (final Join<Organization, ?> join : joins) {
-      assertEquals(JoinType.LEFT, join.getJoinType());
-    }
-  }
-
-  @Test
-  void checkFromListOrderByOuterJoinOnConditionOne() throws ODataJPAModelException, ODataApplicationException,
-      JPANoSelectionException {
-    final List<JPAAssociationPath> orderBy = new ArrayList<>();
-    buildRoleAssociationPath(orderBy);
-
-    final Map<String, From<?, ?>> act = cut.createFromClause(orderBy, new ArrayList<>(), cut.cq, null);
-
-    @SuppressWarnings("unchecked")
-    final Root<Organization> root = (Root<Organization>) act.get(jpaEntityType.getExternalFQN()
-        .getFullQualifiedNameAsString());
-    final Set<Join<Organization, ?>> joins = root.getJoins();
-    assertEquals(1, joins.size());
-
-    for (final Join<Organization, ?> join : joins) {
-      assertNull(join.getOn());
-    }
-  }
-
-  @Test
   void checkFromListDescriptionAssociationAllFields() throws ODataApplicationException, ODataJPAModelException,
       JPANoSelectionException {
-    final List<JPAAssociationPath> orderBy = new ArrayList<>();
+    final List<JPAProcessorAttribute> orderBy = new ArrayList<>();
     final List<JPAPath> descriptionPathList = new ArrayList<>();
     final JPAEntityType entity = helper.getJPAEntityType("Organizations");
     descriptionPathList.add(entity.getPath("Address/CountryName"));
 
-    final JPAAttribute attri = helper.getJPAAttribute("Organizations", "address").get();
-    final JPAAttribute exp = attri.getStructuredType().getAttribute("countryName").get();
-
     final Map<String, From<?, ?>> act = cut.createFromClause(orderBy, descriptionPathList, cut.cq, null);
     assertEquals(2, act.size());
-    assertNotNull(act.get(exp.getInternalName()));
+    assertNotNull(act.get("Address/CountryName"));
   }
 
   @Test
-  void checkFromListDescriptionAssozationAllFields2() throws ODataApplicationException, ODataJPAModelException,
+  void checkFromListDescriptionAssociationAllFields2() throws ODataApplicationException, ODataJPAModelException,
       JPANoSelectionException {
-    final List<JPAAssociationPath> orderBy = new ArrayList<>();
+    final List<JPAProcessorAttribute> orderBy = new ArrayList<>();
     final List<JPAPath> descriptionPathList = new ArrayList<>();
     final JPAEntityType entity = helper.getJPAEntityType("Organizations");
     descriptionPathList.add(entity.getPath("Address/RegionName"));
 
-    final JPAAttribute attri = helper.getJPAAttribute("Organizations", "address").get();
-    final JPAAttribute exp = attri.getStructuredType().getAttribute("regionName").get();
-
     final Map<String, From<?, ?>> act = cut.createFromClause(orderBy, descriptionPathList, cut.cq, null);
     assertEquals(2, act.size());
-    assertNotNull(act.get(exp.getInternalName()));
+    assertNotNull(act.get("Address/RegionName"));
   }
 
   @Test
-  void checkThrowsIfEliminatedByGroups() throws ODataJPAIllegalAccessException, ODataException,
-      JPANoSelectionException {
+  void checkThrowsIfEliminatedByGroups() throws ODataJPAIllegalAccessException, ODataException {
 
     final JPAODataInternalRequestContext requestContext = buildRequestContextToTestGroups(null);
 
@@ -240,16 +192,22 @@ class TestJPAQueryFromClause extends TestBase {
     when(externalContext.getGroupsProvider()).thenReturn(Optional.ofNullable(groups));
     when(externalContext.getRequestParameter()).thenReturn(mock(JPARequestParameterMap.class));
     final JPAODataInternalRequestContext requestContext = new JPAODataInternalRequestContext(externalContext,
-        sessionContext);
+        sessionContext, odata);
     requestContext.setUriInfo(uriInfo);
     return requestContext;
   }
 
-  private JPAAssociationPath buildRoleAssociationPath(final List<JPAAssociationPath> orderBy)
-      throws ODataJPAModelException {
-    final JPAAssociationPath exp = helper.getJPAAssociationPath("Organizations", "Roles");
-    orderBy.add(exp);
-    return exp;
+  @SuppressWarnings("unchecked")
+  private JPAProcessorAttribute buildRoleAssociationPath(final List<JPAProcessorAttribute> orderBy) {
+
+    final var attribute = mock(JPAProcessorSimpleAttribute.class);
+    final var join = mock(Join.class);
+    when(attribute.requiresJoin()).thenReturn(true);
+    when(attribute.getAlias()).thenReturn("Roles");
+    when(attribute.createJoin()).thenReturn(join);
+    when(attribute.setTarget(any(), any(), any())).thenReturn(attribute);
+    orderBy.add(attribute);
+    return attribute;
   }
 
 }

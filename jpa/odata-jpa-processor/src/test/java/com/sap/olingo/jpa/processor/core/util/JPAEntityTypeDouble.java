@@ -16,6 +16,9 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPACollectionAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEtagValidator;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAInheritanceInformation;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAOnConditionItem;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAProtectionInfo;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAQueryExtension;
@@ -40,10 +43,10 @@ public class JPAEntityTypeDouble implements JPAEntityType {
     return base.getAssociationPath(externalName);
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public List<JPAAssociationPath> getAssociationPathList() throws ODataJPAModelException {
-    fail();
-    return null;
+    return (List<JPAAssociationPath>) failWithNull();
   }
 
   @Override
@@ -103,8 +106,7 @@ public class JPAEntityTypeDouble implements JPAEntityType {
 
   @Override
   public JPAPath getPath(final String externalName, final boolean respectIgnore) throws ODataJPAModelException {
-    fail();
-    return null;
+    return (JPAPath) failWithNull();
   }
 
   @Override
@@ -119,8 +121,7 @@ public class JPAEntityTypeDouble implements JPAEntityType {
 
   @Override
   public boolean isAbstract() {
-    fail();
-    return false;
+    return failWithFalse();
   }
 
   @Override
@@ -140,26 +141,24 @@ public class JPAEntityTypeDouble implements JPAEntityType {
 
   @Override
   public String getContentType() throws ODataJPAModelException {
-    fail();
-    return null;
+    return (String) failWithNull();
   }
 
   @Override
   public JPAPath getContentTypeAttributePath() throws ODataJPAModelException {
-    fail();
-    return null;
+    return (JPAPath) failWithNull();
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public List<JPAAttribute> getKey() throws ODataJPAModelException {
-    fail();
-    return null;
+    return (List<JPAAttribute>) failWithNull();
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public List<JPAPath> getKeyPath() throws ODataJPAModelException {
-    fail();
-    return null;
+    return (List<JPAPath>) failWithNull();
   }
 
   @Override
@@ -193,7 +192,7 @@ public class JPAEntityTypeDouble implements JPAEntityType {
   }
 
   @Override
-  public List<JPAPath> searchChildPath(final JPAPath selectItemPath) {
+  public List<JPAPath> searchChildPath(final JPAPath selectItemPath) throws ODataJPAModelException {
     return base.searchChildPath(selectItemPath);
   }
 
@@ -209,14 +208,17 @@ public class JPAEntityTypeDouble implements JPAEntityType {
 
   @Override
   public JPAPath getEtagPath() throws ODataJPAModelException {
-    fail();
-    return null;
+    return (JPAPath) failWithNull();
   }
 
   @Override
   public boolean hasCompoundKey() {
-    fail();
-    return false;
+    return failWithFalse();
+  }
+
+  @Override
+  public boolean hasEmbeddedKey() {
+    return failWithFalse();
   }
 
   @Override
@@ -231,7 +233,52 @@ public class JPAEntityTypeDouble implements JPAEntityType {
   }
 
   @Override
-  public JPAStructuredType getBaseType() {
+  public JPAStructuredType getBaseType() throws ODataJPAModelException {
     return base.getBaseType();
+  }
+
+  @Override
+  public JPAInheritanceInformation getInheritanceInformation() throws ODataJPAModelException {
+    fail();
+    return new JPAInheritanceInformation() {
+
+      @Override
+      public List<JPAOnConditionItem> getJoinColumnsList() throws ODataJPAModelException {
+        return List.of();
+      }
+
+      @Override
+      public List<JPAOnConditionItem> getReversedJoinColumnsList() throws ODataJPAModelException {
+        return List.of();
+      }
+    };
+  }
+
+  @Override
+  public Object getAnnotationValue(final String alias, final String term, final String property)
+      throws ODataJPAModelException {
+    return this.base.getAnnotationValue(alias, term, property);
+  }
+
+  @Override
+  public JPAEtagValidator getEtagValidator() {
+    fail();
+    return JPAEtagValidator.WEAK;
+  }
+
+  private Object failWithNull() {
+    fail();
+    return null;
+  }
+
+  private boolean failWithFalse() {
+    fail();
+    return false;
+  }
+
+  @Override
+  public List<String> getUserGroups() throws ODataJPAModelException {
+    fail();
+    return List.of();
   }
 }

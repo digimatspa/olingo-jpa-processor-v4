@@ -6,15 +6,12 @@ import static com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterExceptio
 import static org.apache.olingo.commons.api.http.HttpStatusCode.INTERNAL_SERVER_ERROR;
 import static org.apache.olingo.commons.api.http.HttpStatusCode.NOT_IMPLEMENTED;
 
-import java.lang.reflect.Field;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import jakarta.persistence.Transient;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.From;
 import jakarta.persistence.criteria.Predicate;
@@ -119,22 +116,21 @@ class JPAVisitor implements JPAExpressionVisitor { // NOSONAR
           || operator == BinaryOperatorKind.MOD) {
         return new JPAArithmeticOperatorImp(this.jpaComplier.getConverter(), operator, left, right);
       }
+
     }
     throw new ODataJPAFilterException(NOT_SUPPORTED_OPERATOR, NOT_IMPLEMENTED, operator.name());
   }
 
   @Override
   public JPAOperator visitBinaryOperator(final BinaryOperatorKind operator, final JPAOperator left,
-      final List<JPAOperator> right)
-      throws ExpressionVisitException, ODataApplicationException {
+      final List<JPAOperator> right) throws ExpressionVisitException, ODataApplicationException {
 
-    try (JPARuntimeMeasurement measurement = debugger.newMeasurement(this, "visitBinaryOperator")) {
-      if (operator == BinaryOperatorKind.IN) {
-        if (left instanceof JPAMemberOperator)
-          return new JPAInListOperatorImp<JPAOperator>(this.jpaComplier.getConverter(), operator, (JPAMemberOperator) left,
-              (List<JPAOperator>) right);
-      }
-    }
+    if (hasNavigation(left))
+      return new JPANavigationInOperation(this.jpaComplier, operator, left, right);
+
+    if (operator == BinaryOperatorKind.IN)
+      return new JPAInOperatorImpl<>(this.jpaComplier.getConverter(), left, right);
+
     throw new ODataJPAFilterException(NOT_SUPPORTED_OPERATOR, NOT_IMPLEMENTED, operator.name());
   }
 
@@ -186,7 +182,7 @@ class JPAVisitor implements JPAExpressionVisitor { // NOSONAR
     try (JPARuntimeMeasurement measurement = debugger.newMeasurement(this, "visitMember")) {
      final JPAPath attributePath = determineAttributePath(this.jpaComplier.getJpaEntityType(),
           this.jpaComplier.getParent().getJpaEntity(), member, jpaComplier.getAssociation());
-      checkTransient(attributePath, this.jpaComplier.getJpaEntityType());
+      checkTransient(attributePath);
       if (getLambdaType(member.getResourcePath()) == UriResourceKind.lambdaAny) {
         return new JPALambdaAnyOperation(this.jpaComplier, member);
       } else if (getLambdaType(member.getResourcePath()) == UriResourceKind.lambdaAll) {
@@ -326,29 +322,16 @@ class JPAVisitor implements JPAExpressionVisitor { // NOSONAR
     return selectItemPath;
   }
 
-  private void checkTransient(@Nullable final JPAPath attributePath, JPAEntityType jpaEntityType) throws ODataApplicationException {
+  private void checkTransient(@Nullable final JPAPath attributePath) throws ODataApplicationException {
 
     if (attributePath != null) {
       final Optional<JPAAttribute> transientProperty = attributePath.getPath()
-              .stream()
-              .map(e -> (JPAAttribute) e)
-              .filter(JPAAttribute::isTransient)
-              .findFirst();
-      if (transientProperty.isPresent()) {
-        String fieldName = transientProperty.get().getInternalName();
-
-        if(jpaEntityType != null){
-          //Just check simple fields, collections not checked
-          Optional<Field> field = Arrays.stream(jpaEntityType.getTypeClass().
-                  getDeclaredFields()).filter(e -> e.getName().equals(fieldName)).findFirst();
-          if(field.isPresent() && Arrays.stream(field.get().getAnnotations()).
-                  noneMatch(e-> e.annotationType().equals(Transient.class))){
-            return;
-          }
-        }
-
+          .stream()
+          .map(JPAAttribute.class::cast)
+          .filter(JPAAttribute::isTransient)
+          .findFirst();
+      if (transientProperty.isPresent())
         throw new ODataJPAFilterException(NOT_SUPPORTED_TRANSIENT, NOT_IMPLEMENTED, attributePath.toString());
-      }
     }
   }
 }

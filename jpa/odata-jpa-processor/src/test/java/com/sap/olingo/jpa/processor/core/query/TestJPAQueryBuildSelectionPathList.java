@@ -13,6 +13,7 @@ import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.edm.EdmProperty;
 import org.apache.olingo.commons.api.ex.ODataException;
+import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriResource;
@@ -25,9 +26,7 @@ import org.apache.olingo.server.api.uri.queryoption.SelectOption;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.sap.olingo.jpa.metadata.api.JPAEdmProvider;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
-import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.impl.JPADefaultEdmNameBuilder;
 import com.sap.olingo.jpa.processor.core.api.JPAODataContextAccessDouble;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContext;
@@ -45,6 +44,8 @@ class TestJPAQueryBuildSelectionPathList extends TestBase {
   private JPAODataSessionContextAccess sessionContext;
   private UriInfo uriInfo;
   private JPAODataInternalRequestContext requestContext;
+  private JPAODataRequestContext externalContext;
+  private OData odata;
 
   @BeforeEach
   void setup() throws ODataException, ODataJPAIllegalAccessException {
@@ -53,11 +54,11 @@ class TestJPAQueryBuildSelectionPathList extends TestBase {
     helper = new TestHelper(emf, PUNIT_NAME);
     nameBuilder = new JPADefaultEdmNameBuilder(PUNIT_NAME);
     createHeaders();
-    sessionContext = new JPAODataContextAccessDouble(new JPAEdmProvider(PUNIT_NAME, emf, null, TestBase.enumPackages),
-        dataSource, null, null);
-    final JPAODataRequestContext externalContext = mock(JPAODataRequestContext.class);
+    sessionContext = new JPAODataContextAccessDouble(helper.edmProvider, emf, dataSource, null, null, null);
+    odata = mock(OData.class);
+    externalContext = mock(JPAODataRequestContext.class);
     when(externalContext.getEntityManager()).thenReturn(emf.createEntityManager());
-    requestContext = new JPAODataInternalRequestContext(externalContext, sessionContext);
+    requestContext = new JPAODataInternalRequestContext(externalContext, sessionContext, odata);
     requestContext.setUriInfo(uriInfo);
     cut = new JPAJoinQuery(null, requestContext);
 
@@ -238,7 +239,7 @@ class TestJPAQueryBuildSelectionPathList extends TestBase {
   }
 
   @Test
-  void checkSelectContainsVersionEvenSoIgnored() throws ODataApplicationException, ODataJPAModelException {
+  void checkSelectContainsVersionEvenSoIgnored() throws ODataApplicationException {
     final List<UriResource> resourcePath = buildUriInfo("BusinessPartnerProtecteds", "BusinessPartnerProtected");
     final UriResourcePrimitiveProperty byResource = mock(UriResourcePrimitiveProperty.class);
     final EdmProperty byProperty = mock(EdmProperty.class);
@@ -271,6 +272,7 @@ class TestJPAQueryBuildSelectionPathList extends TestBase {
   @Test
   void checkSelectTransientWithKey() throws ODataException, ODataJPAIllegalAccessException {
     buildUriInfo("Persons", "Person");
+    requestContext = new JPAODataInternalRequestContext(externalContext, sessionContext, odata);
     requestContext.setUriInfo(uriInfo);
     cut = new JPAJoinQuery(null, requestContext);
 

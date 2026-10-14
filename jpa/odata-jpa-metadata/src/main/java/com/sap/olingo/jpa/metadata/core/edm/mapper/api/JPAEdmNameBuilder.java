@@ -5,6 +5,7 @@ package com.sap.olingo.jpa.metadata.core.edm.mapper.api;
 
 import javax.annotation.Nonnull;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.EmbeddableType;
 import jakarta.persistence.metamodel.EntityType;
@@ -19,6 +20,7 @@ import org.apache.olingo.commons.api.edm.provider.CsdlEntityType;
  *
  */
 public interface JPAEdmNameBuilder {
+  static final String DB_FIELD_NAME_PATTERN = "\"&1\"";
 
   /**
    *
@@ -122,4 +124,49 @@ public interface JPAEdmNameBuilder {
    */
   @Nonnull
   String getNamespace();
+
+  /**
+   * Build the name of the database column in case it is not provided by the annotation {@link Column}.
+   * The Default returns the field name, so it will be converted later into the database default representation.
+   * <p>
+   * In case the field name should be used as such (old default) you need to surround the field name by quotation marks:
+   *
+   * <pre>
+   * {@code
+   * final var stringBuilder = new StringBuilder(DB_FIELD_NAME_PATTERN);
+   * stringBuilder.replace(1, 3, jpaFieldName);
+   * return stringBuilder.toString();
+   * }
+   * </pre>
+   *
+   *
+   * If you use (upper case) snake case for column names, the implementation could look like this:
+   *
+   * <pre>
+   * {@code
+   * int start = 0;
+   * final List<String> splits = new ArrayList<>();
+   * final var chars = jpaFieldName.toCharArray();
+   * for (int i = 0; i < chars.length; i++) {
+   *   if (Character.isUpperCase(chars[i])) {
+   *     splits.add(String.copyValueOf(chars, start, i - start));
+   *     start = i;
+   *   }
+   * }
+   * if (start < chars.length)
+   *   splits.add(String.copyValueOf(chars, start, chars.length - start));
+   *
+   * return splits.stream()
+   *     .map(String::toUpperCase)
+   *     .collect(Collectors.joining("_"));
+   * }
+   * </pre>
+   *
+   * @param jpaFieldName Name of the field in the entity
+   * @return column name
+   */
+  @Nonnull
+  default String buildColumnName(final String jpaFieldName) {
+    return jpaFieldName;
+  }
 }

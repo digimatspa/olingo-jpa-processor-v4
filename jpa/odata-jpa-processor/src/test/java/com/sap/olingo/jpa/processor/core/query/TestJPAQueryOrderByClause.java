@@ -3,16 +3,39 @@ package com.sap.olingo.jpa.processor.core.query;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+import javax.sql.DataSource;
+
+import jakarta.persistence.EntityManagerFactory;
 
 import org.apache.olingo.commons.api.ex.ODataException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.sap.olingo.jpa.metadata.api.JPAEntityManagerFactory;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEdmNameBuilder;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.impl.JPADefaultEdmNameBuilder;
 import com.sap.olingo.jpa.processor.core.api.JPAODataGroupsProvider;
+import com.sap.olingo.jpa.processor.core.testmodel.DataSourceHelper;
 import com.sap.olingo.jpa.processor.core.util.IntegrationTestHelper;
-import com.sap.olingo.jpa.processor.core.util.TestBase;
 
-class TestJPAQueryOrderByClause extends TestBase {
+class TestJPAQueryOrderByClause {
+  protected static final String PUNIT_NAME = "com.sap.olingo.jpa";
+  public static final String[] enumPackages = { "com.sap.olingo.jpa.processor.core.testmodel" };
+  protected static EntityManagerFactory emf;
+  protected Map<String, List<String>> headers;
+  protected static JPAEdmNameBuilder nameBuilder;
+  protected static DataSource dataSource;
+
+  @BeforeAll
+  static void setupClass() {
+    dataSource = DataSourceHelper.createDataSource(DataSourceHelper.DB_HSQLDB);
+    emf = JPAEntityManagerFactory.getEntityManagerFactory(PUNIT_NAME, dataSource);
+    nameBuilder = new JPADefaultEdmNameBuilder(PUNIT_NAME);
+  }
 
   @Test
   void testOrderByOneProperty() throws IOException, ODataException {
@@ -37,16 +60,11 @@ class TestJPAQueryOrderByClause extends TestBase {
   }
 
   @Test
-  void testOrderByOneComplexPropertyDesc() throws IOException, ODataException {
+  void testOrderByOneComplexPropertyDeepAsc() throws IOException, ODataException {
 
-    final IntegrationTestHelper helper = new IntegrationTestHelper(emf, "Organizations?$orderby=Address/Region desc");
-    if (helper.getStatus() != 200)
-      System.out.println(helper.getRawResult());
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
+        "Organizations?$orderby=AdministrativeInformation/Created/By");
     helper.assertStatus(200);
-
-    final ArrayNode orgs = helper.getValues();
-    assertEquals("US-UT", orgs.get(0).get("Address").get("Region").asText());
-    assertEquals("US-CA", orgs.get(9).get("Address").get("Region").asText());
   }
 
   @Test
@@ -127,7 +145,7 @@ class TestJPAQueryOrderByClause extends TestBase {
   void testOrderBy$CountAsc() throws IOException, ODataException {
 
     final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
-        "Organizations?$orderby=Roles/$count asc");
+        "Organizations?$select=ID&$orderby=Roles/$count asc");
     helper.assertStatus(200);
 
     final ArrayNode orgs = helper.getValues();
@@ -229,7 +247,7 @@ class TestJPAQueryOrderByClause extends TestBase {
     final JPAODataGroupsProvider groups = new JPAODataGroupsProvider();
     final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
         "Persons?$orderby=FullName", groups);
-    helper.assertStatus(501);
+    helper.assertStatus(400);
   }
 
   @Test
@@ -238,7 +256,7 @@ class TestJPAQueryOrderByClause extends TestBase {
     final JPAODataGroupsProvider groups = new JPAODataGroupsProvider();
     final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
         "Persons?$select=ID&$orderby=Address/Street", groups);
-    helper.assertStatus(501);
+    helper.assertStatus(400);
   }
 
   @Test
@@ -246,6 +264,59 @@ class TestJPAQueryOrderByClause extends TestBase {
 
     final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
         "CollectionDeeps?$orderby=FirstLevel/TransientCollection/$count asc");
-    helper.assertStatus(501);
+    helper.assertStatus(400);
   }
+
+  @Test
+  void testOrderByToOneProperty() throws IOException, ODataException {
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
+        "AssociationOneToOneSources?$orderby=ColumnTarget/Source asc");
+    helper.assertStatus(200);
+  }
+
+  @Test
+  void testOrderByToOnePropertyViaComplex() throws IOException, ODataException {
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
+        "Persons?$select=ID&$orderby=AdministrativeInformation/Created/User/LastName asc");
+    helper.assertStatus(200);
+  }
+
+  @Test
+  void testOrderByToOnePropertyWithCollectionProperty() throws IOException, ODataException {
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
+        "BusinessPartnerRoles?$expand=BusinessPartner($expand=Roles;$select=ID)&$orderby=BusinessPartner/Country asc");
+    helper.assertStatus(200);
+  }
+
+  @Test
+  void testOrderByToTwoPropertyWithCollectionProperty() throws IOException, ODataException {
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
+        "BusinessPartnerRoles?$orderby=BusinessPartner/Country asc,BusinessPartner/ID asc");
+    helper.assertStatus(200);
+  }
+
+  @Test
+  void testOrderByDescriptionProperty() throws IOException, ODataException {
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
+        "Organizations?$select=ID&$orderby=LocationName asc");
+    helper.assertStatus(200);
+
+    final ArrayNode orgs = helper.getValues();
+    assertEquals(10, orgs.size());
+    assertEquals("10", orgs.get(0).get("ID").asText());
+  }
+
+  @Test
+  void testOrderByDescriptionViaToOneProperty() throws IOException, ODataException {
+
+    final IntegrationTestHelper helper = new IntegrationTestHelper(emf,
+        "BusinessPartnerRoles?$orderby=Organization/LocationName desc");
+    helper.assertStatus(200);
+  }
+
 }

@@ -36,7 +36,7 @@ class JPACoreDebuggerTest {
   private PrintStream printOut;
 
   @BeforeAll
-  public static void classSetup() {
+  static void classSetup() {
     // Redirect log to System out
     System.getProperties().put("org.slf4j.simpleLogger.logFile", "System.err");
     System.getProperties().put(
@@ -47,8 +47,8 @@ class JPACoreDebuggerTest {
     logHandler = new LogHandler();
     Logger.getLogger("com.sap.olingo.jpa.processor.core.processor.TestJPACoreDebugger").setLevel(Level.FINE);
     Logger.getLogger("com.sap.olingo.jpa.processor.core.processor.TestJPACoreDebugger").addHandler(logHandler);
-    Logger.getLogger("com.sap.olingo.jpa.processor.core.processor.JPACoreDebugger").setLevel(Level.FINEST);
-    Logger.getLogger("com.sap.olingo.jpa.processor.core.processor.JPACoreDebugger").addHandler(logHandler);
+    Logger.getLogger(JPACoreDebugger.class.getName()).setLevel(Level.FINEST);
+    Logger.getLogger(JPACoreDebugger.class.getName()).addHandler(logHandler);
   }
 
   @BeforeEach
@@ -67,20 +67,24 @@ class JPACoreDebuggerTest {
   }
 
   @Test
-  void testMeassumentCreated() throws Exception {
-    try (JPARuntimeMeasurement measurement = cutDebugOn.newMeasurement(cutDebugOn, "firstTest")) {}
+  void testMeasurementCreated() {
+    try (JPARuntimeMeasurement measurement = cutDebugOn.newMeasurement(cutDebugOn, "firstTest")) {
+      // Do nothing
+    }
     assertFalse(cutDebugOn.getRuntimeInformation().isEmpty());
   }
 
   @Test
-  void testNoMeassumentDebugFalls() throws Exception {
+  void testNoMeasurementDebugFalls() {
     cutDebugOn = new JPACoreDebugger(false);
-    try (JPARuntimeMeasurement measurement = cutDebugOn.newMeasurement(cutDebugOn, "firstTest")) {}
+    try (JPARuntimeMeasurement measurement = cutDebugOn.newMeasurement(cutDebugOn, "firstTest")) {
+      // Do nothing
+    }
     assertTrue(cutDebugOn.getRuntimeInformation().isEmpty());
   }
 
   @Test
-  void testMeassumentCreateMeassument() throws Exception {
+  void testMeasurementCreateMeasurement() throws Exception {
     try (JPARuntimeMeasurement measurement = cutDebugOn.newMeasurement(cutDebugOn, "firstTest")) {
       TimeUnit.MILLISECONDS.sleep(100);
     }
@@ -101,6 +105,18 @@ class JPACoreDebuggerTest {
     final String act = output.toString();
     assertTrue(cutDebugOff.getRuntimeInformation().isEmpty());
     assertTrue(StringUtils.isNotEmpty(act));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  void testMemoryMeasurement() {
+    final JPARuntimeMeasurement measurement;
+    try (final JPARuntimeMeasurement m = cutDebugOn.newMeasurement(cutDebugOn, "firstTest")) {
+      @SuppressWarnings("unused")
+      final String[] dummy = new String[100];
+      measurement = m;
+    }
+    assertTrue(measurement.getMemoryConsumption() > 0);
   }
 
   @Test
@@ -145,13 +161,25 @@ class JPACoreDebuggerTest {
     assertTrue(act.contains("Hallo"));
   }
 
+  @SuppressWarnings("resource")
+  @Test
+  void testMemoryConsumption() {
+    final JPARuntimeMeasurement act;
+    try (JPARuntimeMeasurement measurement = cutDebugOn.newMeasurement(cutDebugOn, "firstTest")) {
+      act = measurement;
+    } finally {
+      // Do nothing
+    }
+    assertTrue(act.getMemoryConsumption() < 10);
+  }
+
   private static class LogHandler extends Handler {
 
     private List<LogRecord> cache = new ArrayList<>();
 
     @Override
-    public void publish(final LogRecord record) {
-      cache.add(record);
+    public void publish(final LogRecord item) {
+      cache.add(item);
     }
 
     @Override

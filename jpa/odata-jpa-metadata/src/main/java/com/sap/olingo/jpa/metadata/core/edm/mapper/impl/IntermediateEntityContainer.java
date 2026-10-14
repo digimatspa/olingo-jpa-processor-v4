@@ -20,6 +20,7 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEdmNameBuilder;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntitySet;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAFunction;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAUserGroupRestrictable;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.extension.IntermediateEntityContainerAccess;
 
@@ -47,9 +48,39 @@ final class IntermediateEntityContainer extends IntermediateModelElement impleme
     this.singletonListInternalKey = new HashMap<>();
   }
 
+  private IntermediateEntityContainer(final IntermediateEntityContainer source,
+      final Map<String, IntermediateSchema> schemaListInternalKey, final List<String> userGroups,
+      final boolean hideRestrictedProperties) throws ODataJPAModelException {
+    super(source.nameBuilder, source.nameBuilder.buildContainerName(), source.getAnnotationInformation());
+    schemaList = schemaListInternalKey;
+    setExternalName(source.getExternalName());
+    entitySetListInternalKey = copyRestricted(source.entitySetListInternalKey, userGroups, hideRestrictedProperties);
+    singletonListInternalKey = copyRestricted(source.singletonListInternalKey, userGroups, hideRestrictedProperties);
+  }
+
+  private <T extends IntermediateModelElement> Map<String, T> copyRestricted(final Map<String, T> source,
+      final List<String> userGroups, final boolean hideRestrictedProperties) throws ODataJPAModelException {
+    final Map<String, T> result = new HashMap<>(source.size());
+    for (final var item : source.entrySet()) {
+      if (item.getValue() instanceof final JPAUserGroupRestrictable restrictable) {
+        if (restrictable.isAccessibleFor(userGroups)) {
+          result.put(item.getKey(), item.getValue().asUserGroupRestricted(userGroups, hideRestrictedProperties));
+        }
+      } else {
+        result.put(item.getKey(), item.getValue().asUserGroupRestricted(userGroups, hideRestrictedProperties));
+      }
+    }
+    return result;
+  }
+
   @Override
   public void addAnnotations(final List<CsdlAnnotation> annotations) {
     this.edmAnnotations.addAll(annotations);
+  }
+
+  IntermediateEntityContainer asUserGroupRestricted(final Map<String, IntermediateSchema> schemaListInternalKey,
+      final List<String> userGroups, final boolean hideRestrictedProperties) throws ODataJPAModelException {
+    return new IntermediateEntityContainer(this, schemaListInternalKey, userGroups, hideRestrictedProperties);
   }
 
   @Override
@@ -134,7 +165,8 @@ final class IntermediateEntityContainer extends IntermediateModelElement impleme
     for (final Entry<String, IntermediateSchema> schema : schemaList.entrySet()) {
       for (final IntermediateEntityType<?> et : schema.getValue().getEntityTypes()) {
         if ((!et.ignore() || et.asTopLevelOnly()) && et.asSingleton()) {
-          final IntermediateSingleton singleton = new IntermediateSingleton(nameBuilder, et, getAnnotationInformation());
+          final IntermediateSingleton singleton = new IntermediateSingleton(nameBuilder, et,
+              getAnnotationInformation());
           singletonListInternalKey.put(singleton.internalName, singleton);
         }
       }

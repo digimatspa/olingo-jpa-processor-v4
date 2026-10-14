@@ -31,6 +31,7 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.processor.cb.ProcessorCriteriaQuery;
+import com.sap.olingo.jpa.processor.cb.ProcessorSqlPatternProvider;
 import com.sap.olingo.jpa.processor.cb.ProcessorSubquery;
 import com.sap.olingo.jpa.processor.cb.exceptions.InternalServerError;
 import com.sap.olingo.jpa.processor.cb.exceptions.NotImplementedException;
@@ -38,7 +39,7 @@ import com.sap.olingo.jpa.processor.cb.joiner.ExpressionCollector;
 import com.sap.olingo.jpa.processor.cb.joiner.SqlConvertible;
 import com.sap.olingo.jpa.processor.cb.joiner.StringBuilderCollector;
 
-class CriteriaQueryImpl<T> implements ProcessorCriteriaQuery<T>, SqlConvertible {
+class CriteriaQueryImpl<T> extends Pageable implements ProcessorCriteriaQuery<T>, SqlConvertible {
   private final Class<T> resultType;
   private final Set<FromImpl<?, ?>> roots = new HashSet<>();
   private final JPAServiceDocument sd;
@@ -53,8 +54,8 @@ class CriteriaQueryImpl<T> implements ProcessorCriteriaQuery<T>, SqlConvertible 
   private final CriteriaBuilder cb;
 
   CriteriaQueryImpl(final Class<T> clazz, final JPAServiceDocument sd, final AliasBuilder ab,
-      final CriteriaBuilder cb) {
-    super();
+      final CriteriaBuilder cb, final ProcessorSqlPatternProvider sqlPattern) {
+    super(sqlPattern);
     this.resultType = clazz;
     this.sd = sd;
     this.where = Optional.empty();
@@ -66,8 +67,9 @@ class CriteriaQueryImpl<T> implements ProcessorCriteriaQuery<T>, SqlConvertible 
     this.selectAliasBuilder = new AliasBuilder("S");
   }
 
-  CriteriaQueryImpl(final Class<T> clazz, final JPAServiceDocument sd, final CriteriaBuilder cb) {
-    this(clazz, sd, new AliasBuilder(), cb);
+  CriteriaQueryImpl(final Class<T> clazz, final JPAServiceDocument sd, final CriteriaBuilder cb,
+      final ProcessorSqlPatternProvider sqlPattern) {
+    this(clazz, sd, new AliasBuilder(), cb, sqlPattern);
   }
 
   @Override
@@ -107,6 +109,7 @@ class CriteriaQueryImpl<T> implements ProcessorCriteriaQuery<T>, SqlConvertible 
           .append(" ");
       ((SqlConvertible) e).asSQL(statement);
     });
+    paging(statement);
     return statement;
   }
 
@@ -249,8 +252,8 @@ class CriteriaQueryImpl<T> implements ProcessorCriteriaQuery<T>, SqlConvertible 
    */
   @Override
   public CriteriaQuery<T> having(final Expression<Boolean> restriction) {
-    final Predicate[] p = { (Predicate) restriction };
-    return having(p); // NOSONAR
+    final Predicate[] predicate = { (Predicate) restriction };
+    return having(predicate); // NOSONAR
   }
 
   /**
@@ -267,12 +270,12 @@ class CriteriaQueryImpl<T> implements ProcessorCriteriaQuery<T>, SqlConvertible 
    */
   @Override
   public CriteriaQuery<T> having(final Predicate... restrictions) {
-    final Predicate p = restrictions.length > 1
+    final Predicate predicate = restrictions.length > 1
         ? cb.and(restrictions)
         : restrictions.length == 1 // NOSONAR
             ? restrictions[0]
             : null;
-    having = Optional.ofNullable(p);
+    having = Optional.ofNullable(predicate);
     return this;
   }
 
@@ -393,7 +396,7 @@ class CriteriaQueryImpl<T> implements ProcessorCriteriaQuery<T>, SqlConvertible 
 
   @Override
   public <U> ProcessorSubquery<U> subquery(@Nonnull final Class<U> type) {
-    return new SubqueryImpl<>(type, this, aliasBuilder, cb);
+    return new SubqueryImpl<>(type, this, aliasBuilder, cb, sqlPattern, sd);
   }
 
   /**
@@ -443,5 +446,39 @@ class CriteriaQueryImpl<T> implements ProcessorCriteriaQuery<T>, SqlConvertible 
     for (final Join<?, ?> join : from.getJoins()) {
       addInheritanceWhere((FromImpl<?, ?>) join, inheritanceWhere);
     }
+  }
+
+  /**
+   * The position of the first result the query object was set to
+   * retrieve. Returns 0 if <code>setFirstResult</code> was not applied to the
+   * query object.
+   * @return position of the first result
+   * @since 2.0
+   */
+  @Override
+  public int getFirstResult() {
+    return super.getStartResult();
+  }
+
+  @Override
+  public void setFirstResult(final int startPosition) {
+    super.setStartResult(startPosition);
+  }
+
+  /**
+   * The maximum number of results the query object was set to
+   * retrieve. Returns <code>Integer.MAX_VALUE</code> if <code>setMaxResults</code> was not
+   * applied to the query object.
+   * @return maximum number of results
+   * @since 2.0
+   */
+  @Override
+  public int getMaxResults() {
+    return super.getMaxResults();
+  }
+
+  @Override
+  public void setMaxResults(final int maxResult) {
+    super.setNumberOfResults(maxResult);
   }
 }

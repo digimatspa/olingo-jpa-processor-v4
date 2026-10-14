@@ -32,6 +32,7 @@
 		<class>com.sap.olingo.jpa.processor.core.testmodel.CollectionSecondLevelComplex</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.CollectionInnerComplex</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.CollectionNestedComplexWithTransient</class>
+		<class>com.sap.olingo.jpa.processor.core.testmodel.CollectionWithTwoKey</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.Comment</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.CommunicationData</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.ComplexWithTransientComplexCollection</class>
@@ -40,6 +41,7 @@
 		<class>com.sap.olingo.jpa.processor.core.testmodel.CollectionNestedComplex</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.CollcetionNestedComplexWithTransient</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.CollectionPartOfComplex</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.NestedComplex</class>
         <class>com.sap.olingo.jpa.processor.core.testmodel.Country</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.CountryKey</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.DateConverter</class>
@@ -78,6 +80,7 @@
 		<class>com.sap.olingo.jpa.metadata.converter.TimeInstantLongConverter</class>
 		<class>com.sap.olingo.jpa.metadata.converter.OffsetDateTimeConverter</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.LocalDateTimeConverter</class>
+		<class>com.sap.olingo.jpa.processor.core.testmodel.TimestampLongConverter</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.TransientRefComplex</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.TransientRefIgnore</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.TemporalWithValidityPeriodKey</class>
@@ -91,6 +94,20 @@
 		<class>com.sap.olingo.jpa.processor.core.testmodel.AnnotationsParent</class>
         <class>com.sap.olingo.jpa.processor.core.testmodel.AnnotationsSingleton</class>
         <class>com.sap.olingo.jpa.processor.core.testmodel.DetailSettings</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.User</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.BooleanConverter</class>   
+        <class>com.sap.olingo.jpa.processor.core.testmodel.UnionMembership</class> 
+        <class>com.sap.olingo.jpa.processor.core.testmodel.RestrictedEntity</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.RestrictedEntityComplex</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.RestrictedEntityUnrestrictedSource</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinAccount</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinCurrentAccount</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinSavingAccount</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinLockedSavingAccount</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinCompoundSuper</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinCompoundSub</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinCompoundSubKey</class>
+        <class>com.sap.olingo.jpa.processor.core.testmodel.InheritanceByJoinTransaction</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 		<properties>
 			<property name="jakarta.persistence.validation.mode" value="NONE" />
@@ -139,6 +156,10 @@
         <class>com.sap.olingo.jpa.processor.core.errormodel.SingletonAsEntitySet</class>
 		<class>com.sap.olingo.jpa.processor.core.testmodel.LocalDateTimeConverter</class>
 	    <class>com.sap.olingo.jpa.processor.core.errormodel.MissingCardinalityAnnotation</class>
+	    <class>com.sap.olingo.jpa.processor.core.errormodel.AssociationOneToManySourceError</class>
+	    <class>com.sap.olingo.jpa.processor.core.errormodel.AssociationOneToManyTargetError</class>
+        <class>com.sap.olingo.jpa.processor.core.errormodel.AssociationVirtualPropertySource</class>
+        <class>com.sap.olingo.jpa.processor.core.errormodel.AssociationVirtualPropertyTarget</class>	    
 		<exclude-unlisted-classes>true</exclude-unlisted-classes>
 		<properties>
 			<property name="eclipselink.logging.parameters" value="true" />

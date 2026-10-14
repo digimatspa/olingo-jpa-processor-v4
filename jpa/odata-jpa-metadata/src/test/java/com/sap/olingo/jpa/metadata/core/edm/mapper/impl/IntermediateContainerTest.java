@@ -59,19 +59,19 @@ class IntermediateContainerTest extends TestMappingRoot {
 
     annotationInfo = new IntermediateAnnotationInformation(new ArrayList<>(), references);
     schema = new IntermediateSchema(new JPADefaultEdmNameBuilder(PUNIT_NAME), emf.getMetamodel(), reflections,
-        annotationInfo);
+        annotationInfo, true);
     etList = emf.getMetamodel().getEntities();
     schemas.put(PUNIT_NAME, schema);
 
   }
 
   @Test
-  void checkContainerCanBeCreated() throws ODataJPAModelException {
+  void checkContainerCanBeCreated() {
     assertNotNull(new IntermediateEntityContainer(new JPADefaultEdmNameBuilder(PUNIT_NAME), schemas, annotationInfo));
   }
 
   @Test
-  void checkGetName() throws ODataJPAModelException {
+  void checkGetName() {
 
     final IntermediateEntityContainer container = new IntermediateEntityContainer(new JPADefaultEdmNameBuilder(
         PUNIT_NAME), schemas, annotationInfo);
@@ -248,7 +248,6 @@ class IntermediateContainerTest extends TestMappingRoot {
     for (final CsdlFunctionImport functionImport : functionImports) {
       if ("Sum".equals(functionImport.getName()))
         return;
-      System.out.println(functionImport.getName());
     }
     fail("Import not found");
   }
@@ -292,27 +291,31 @@ class IntermediateContainerTest extends TestMappingRoot {
 
   }
 
-  private class PostProcessorSetIgnore implements JPAEdmMetadataPostProcessor {
+  private static class PostProcessorSetIgnore implements JPAEdmMetadataPostProcessor {
 
     @Override
     public void processProperty(final IntermediatePropertyAccess property, final String jpaManagedTypeClassName) {
-      if (jpaManagedTypeClassName.equals(
-          "com.sap.olingo.jpa.processor.core.testmodel.BusinessPartner")) {
-        if (property.getInternalName().equals("communicationData")) {
-          property.setIgnore(true);
-        }
+      if (jpaManagedTypeClassName.equals("com.sap.olingo.jpa.processor.core.testmodel.BusinessPartner")
+          && property.getInternalName().equals("communicationData")) {
+        property.setIgnore(true);
       }
     }
 
     @Override
     public void processNavigationProperty(final IntermediateNavigationPropertyAccess property,
-        final String jpaManagedTypeClassName) {}
+        final String jpaManagedTypeClassName) {
+      // Not needed
+    }
 
     @Override
-    public void processEntityType(final IntermediateEntityTypeAccess entity) {}
+    public void processEntityType(final IntermediateEntityTypeAccess entity) {
+      // Not needed
+    }
 
     @Override
-    public void provideReferences(final IntermediateReferenceList references) throws ODataJPAModelException {}
+    public void provideReferences(final IntermediateReferenceList references) throws ODataJPAModelException {
+      // Not needed
+    }
 
     @Override
     public void processEntityContainer(final IntermediateEntityContainerAccess container) {

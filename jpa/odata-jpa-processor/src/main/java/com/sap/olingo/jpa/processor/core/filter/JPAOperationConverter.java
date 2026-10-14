@@ -1,35 +1,36 @@
 package com.sap.olingo.jpa.processor.core.filter;
 
-import static com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterException.MessageKeys.NOT_SUPPORTED_OPERATOR;
-import static org.apache.olingo.commons.api.http.HttpStatusCode.NOT_IMPLEMENTED;
-
-import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import javax.annotation.Nonnull;
+
 import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaBuilder.In;
 import jakarta.persistence.criteria.Expression;
 
-import com.sap.olingo.jpa.processor.core.teiid.Olingo2Teiid;
-import org.apache.olingo.commons.api.edm.geo.Geospatial;
+import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
+import org.apache.olingo.server.api.uri.queryoption.expression.BinaryOperatorKind;
 import org.apache.olingo.server.api.uri.queryoption.expression.UnaryOperatorKind;
 
+import com.sap.olingo.jpa.processor.core.api.JPAODataQueryDirectives;
 import com.sap.olingo.jpa.processor.core.database.JPAODataDatabaseOperations;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAFilterException;
-import org.hibernate.spatial.predicate.JTSSpatialPredicates;
-import org.locationtech.jts.geom.Geometry;
 
 public class JPAOperationConverter {
 
   protected final CriteriaBuilder cb;
   private final JPAODataDatabaseOperations dbConverter;
+  private final JPAODataQueryDirectives directives;
 
-  public JPAOperationConverter(final CriteriaBuilder cb, final JPAODataDatabaseOperations converterExtension) {
+  public JPAOperationConverter(final CriteriaBuilder cb, final JPAODataDatabaseOperations converterExtension,
+                               @Nonnull final JPAODataQueryDirectives directives) {
     super();
     this.cb = cb;
     this.dbConverter = converterExtension;
     this.dbConverter.setCriteriaBuilder(cb);
+    this.directives = directives;
   }
 
   public final Expression<Long> convert(final JPAAggregationOperationImp jpaOperator) throws ODataApplicationException {
@@ -41,8 +42,8 @@ public class JPAOperationConverter {
   }
 
   @SuppressWarnings("unchecked")
-  public final <T extends Number> Expression<T> convert(final JPAArithmeticOperator jpaOperator)
-      throws ODataApplicationException {
+  public final <T extends Number> Expression<T> convert(final JPAArithmeticOperator jpaOperator) // NOSONAR
+          throws ODataApplicationException {
     switch (jpaOperator.getOperator()) {
       case ADD:
         if (jpaOperator.getRight() instanceof JPALiteralOperator)
@@ -67,7 +68,7 @@ public class JPAOperationConverter {
       case MOD:
         if (jpaOperator.getRight() instanceof JPALiteralOperator)
           return (Expression<T>) cb.mod(jpaOperator.getLeftAsIntExpression(), Integer.valueOf(jpaOperator
-              .getRightAsNumber(cb).toString()));
+                  .getRightAsNumber(cb).toString()));
         else
           return (Expression<T>) cb.mod(jpaOperator.getLeftAsIntExpression(), jpaOperator.getRightAsIntExpression());
 
@@ -88,48 +89,51 @@ public class JPAOperationConverter {
   }
 
   @SuppressWarnings({ "unchecked" })
-  public final Expression<Boolean> convert(@SuppressWarnings("rawtypes") final JPAComparisonOperatorImp jpaOperator)
-      throws ODataApplicationException {
+  public final Expression<Boolean> convert(@SuppressWarnings("rawtypes") final JPAComparisonOperator jpaOperator)
+          throws ODataApplicationException {
 
     switch (jpaOperator.getOperator()) {
       case EQ:
         return equalExpression((left, right) -> (cb.equal(left, right)), (left, right) -> (cb.equal(left, right)),
-            left -> (cb.isNull(left)),
-            jpaOperator);
+                left -> (cb.isNull(left)), jpaOperator);
       case NE:
         return equalExpression((left, right) -> (cb.notEqual(left, right)), (left, right) -> (cb.notEqual(left, right)),
-            left -> (cb.isNotNull(left)),
-            jpaOperator);
+                left -> (cb.isNotNull(left)), jpaOperator);
       case GE:
         return comparisonExpression((left, right) -> (cb.greaterThanOrEqualTo(left, right)), (left, right) -> (cb
-            .greaterThanOrEqualTo(left,
-                right)), jpaOperator);
+                .greaterThanOrEqualTo(left, right)), jpaOperator);
       case GT:
         return comparisonExpression((left, right) -> (cb.greaterThan(left, right)), (left, right) -> (cb.greaterThan(
-            left, right)), jpaOperator);
+                left, right)), jpaOperator);
       case LT:
         return comparisonExpression((left, right) -> (cb.lessThan(left, right)), (left, right) -> (cb.lessThan(left,
-            right)), jpaOperator);
+                right)), jpaOperator);
       case LE:
         return comparisonExpression((left, right) -> (cb.lessThanOrEqualTo(left, right)), (left, right) -> (cb
-            .lessThanOrEqualTo(left, right)),
-            jpaOperator);
+                .lessThanOrEqualTo(left, right)), jpaOperator);
       default:
         return dbConverter.convert(jpaOperator);
     }
 
   }
 
-  public <T> Expression<Boolean> convert(final JPAInListOperatorImp<T> jpaOperator)
-      throws ODataApplicationException {
+  @SuppressWarnings("unchecked")
+  public final <T, X extends JPAOperator> Expression<Boolean> convert(final JPAInOperator<T, X> jpaOperator)
+          throws ODataApplicationException {
 
-    switch (jpaOperator.getOperator()) {
-      case IN:
-        return inExpression((l, r) -> (l.in(r)), jpaOperator);
-      // throw new RuntimeException();
-      default:
-        throw new ODataJPAFilterException(NOT_SUPPORTED_OPERATOR, NOT_IMPLEMENTED, jpaOperator.getOperator().name());
+    if (BinaryOperatorKind.IN == jpaOperator.getOperator() && directives.getMaxValuesInInClause() > 0) {
+      final In<T> in = cb.in(jpaOperator.getLeft());
+      if (directives.getMaxValuesInInClause() < jpaOperator.getFixValues().size())
+        throw new ODataJPAFilterException(ODataJPAFilterException.MessageKeys.NO_VALUES_OUT_OF_LIMIT,
+                HttpStatusCode.BAD_REQUEST, String.valueOf(directives.getMaxValuesInInClause()),
+                String.valueOf(jpaOperator.getFixValues().size()));
+      for (final JPAOperator value : jpaOperator.getFixValues()) {
+        in.value((T) value.get());
+      }
+      return in;
     }
+    throw new ODataJPAFilterException(ODataJPAFilterException.MessageKeys.NOT_SUPPORTED_OPERATOR,
+            HttpStatusCode.BAD_REQUEST, jpaOperator.getName());
   }
 
   @SuppressWarnings("unchecked")
@@ -142,26 +146,26 @@ public class JPAOperationConverter {
       case CONTAINS:
         if (jpaFunction.getParameter(1) instanceof JPALiteralOperator) {
           return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              buildLikeLiteral(jpaFunction, "%", "%").toString());
+                  buildLikeLiteral(jpaFunction, "%", "%").toString());
         } else {
           return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("%", "%"));
+                  (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("%", "%"));
         }
       case ENDSWITH:
         if (jpaFunction.getParameter(1) instanceof JPALiteralOperator) {
           return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              buildLikeLiteral(jpaFunction, "%", "").toString());
+                  buildLikeLiteral(jpaFunction, "%", "").toString());
         } else {
           return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("%", ""));
+                  (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("%", ""));
         }
       case STARTSWITH:
         if (jpaFunction.getParameter(1) instanceof JPALiteralOperator) {
           return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              buildLikeLiteral(jpaFunction, "", "%").toString());
+                  buildLikeLiteral(jpaFunction, "", "%").toString());
         } else {
           return cb.like((Expression<String>) (jpaFunction.getParameter(0).get()),
-              (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("", "%"));
+                  (Expression<String>) ((JPAMethodCall) jpaFunction.getParameter(1)).get("", "%"));
         }
       case INDEXOF:
         final String searchString = ((String) ((JPALiteralOperator) jpaFunction.getParameter(1)).get());
@@ -197,28 +201,17 @@ public class JPAOperationConverter {
           return cb.concat((Expression<String>) (jpaFunction.getParameter(0).get()), parameter1);
         else
           return cb.concat((Expression<String>) (jpaFunction.getParameter(0).get()),
-              (Expression<String>) (jpaFunction.getParameter(1).get()));
+                  (Expression<String>) (jpaFunction.getParameter(1).get()));
         // Second Date-Time functions
       case NOW:
         return cb.currentTimestamp();
-
-      case GEOINTERSECTS:
-        Object firstParameter = jpaFunction.getParameter(0).get();
-        Object secondParameter = jpaFunction.getParameter(1).get();
-        if(jpaFunction.getParameter(0).get() instanceof Geospatial){
-          firstParameter = Olingo2Teiid.convertToJTS((Geospatial) jpaFunction.getParameter(0).get());
-        }
-        if(jpaFunction.getParameter(1).get() instanceof Geospatial){
-          secondParameter = Olingo2Teiid.convertToJTS((Geospatial) jpaFunction.getParameter(1).get());
-        }
-        return JTSSpatialPredicates.intersects(cb, (Expression<? extends Geometry>) firstParameter, (Geometry) secondParameter);
       default:
         return dbConverter.convert(jpaFunction);
     }
   }
 
   private StringBuilder buildLikeLiteral(final JPAMethodCall jpaFunction, final String prefix,
-      final String postfix) throws ODataApplicationException {
+                                         final String postfix) throws ODataApplicationException {
 
     final StringBuilder contains = new StringBuilder();
     contains.append(prefix);
@@ -228,7 +221,7 @@ public class JPAOperationConverter {
   }
 
   public final Expression<Boolean> convert(final JPAUnaryBooleanOperatorImp jpaOperator)
-      throws ODataApplicationException {
+          throws ODataApplicationException {
 
     if (jpaOperator.getOperator() == UnaryOperatorKind.NOT)
       return cb.not(jpaOperator.getLeft());
@@ -238,9 +231,9 @@ public class JPAOperationConverter {
 
   @SuppressWarnings({ "unchecked" })
   private <Y extends Comparable<? super Y>> Expression<Boolean> comparisonExpression(
-      final BiFunction<Expression<? extends Y>, Expression<? extends Y>, Expression<Boolean>> allExpressionFunction,
-      final BiFunction<Expression<? extends Y>, Y, Expression<Boolean>> expressionObjectFunction,
-      final JPAComparisonOperator<? extends Y> jpaOperator) throws ODataApplicationException {
+          final BiFunction<Expression<? extends Y>, Expression<? extends Y>, Expression<Boolean>> allExpressionFunction,
+          final BiFunction<Expression<? extends Y>, Y, Expression<Boolean>> expressionObjectFunction,
+          final JPAComparisonOperator<? extends Y> jpaOperator) throws ODataApplicationException {
 
     if (jpaOperator.getRight() instanceof JPAPrimitiveTypeOperator)
       return expressionObjectFunction.apply(jpaOperator.getLeft(), (Y) jpaOperator.getRightAsComparable());
@@ -250,7 +243,7 @@ public class JPAOperationConverter {
 
   @SuppressWarnings("unchecked")
   private Expression<Integer> convertLiteralToExpression(final JPAMethodCall jpaFunction, final int parameterIndex,
-      final int offset) throws ODataApplicationException {
+                                                         final int offset) throws ODataApplicationException {
     final JPAOperator parameter = jpaFunction.getParameter(parameterIndex);
     if (parameter instanceof JPAArithmeticOperatorImp) {
       if (offset != 0)
@@ -263,10 +256,10 @@ public class JPAOperationConverter {
   }
 
   private Expression<Boolean> equalExpression(
-      final BiFunction<Expression<?>, Expression<?>, Expression<Boolean>> allExpressionFunction,
-      final BiFunction<Expression<?>, Object, Expression<Boolean>> expressionObjectFunction,
-      final Function<Expression<?>, Expression<Boolean>> nullFunction,
-      final JPAComparisonOperator<?> jpaOperator) throws ODataApplicationException {
+          final BiFunction<Expression<?>, Expression<?>, Expression<Boolean>> allExpressionFunction,
+          final BiFunction<Expression<?>, Object, Expression<Boolean>> expressionObjectFunction,
+          final Function<Expression<?>, Expression<Boolean>> nullFunction,
+          final JPAComparisonOperator<?> jpaOperator) throws ODataApplicationException {
 
     if (jpaOperator.getRight() instanceof JPAPrimitiveTypeOperator) {
       if (((JPAPrimitiveTypeOperator) jpaOperator.getRight()).isNull())
@@ -278,12 +271,5 @@ public class JPAOperationConverter {
     } else {
       return allExpressionFunction.apply(jpaOperator.getLeft(), jpaOperator.getRightAsExpression());
     }
-  }
-
-  private <T> Expression<Boolean> inExpression(
-      final BiFunction<Expression<T>, List<T>, Expression<Boolean>> expressionFunction,
-      final JPAInListOperator<T> jpaOperator) throws ODataApplicationException {
-    return expressionFunction.apply(jpaOperator.getLeft(), jpaOperator.getRight());
-    // throw new RuntimeException();
   }
 }

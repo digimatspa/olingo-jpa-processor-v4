@@ -1,5 +1,6 @@
 package com.sap.olingo.jpa.processor.test.util;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -30,12 +31,11 @@ import org.mockito.Answers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sap.olingo.jpa.metadata.api.JPAEdmProvider;
+import com.sap.olingo.jpa.processor.core.api.JPAODataApiVersionAccess;
 import com.sap.olingo.jpa.processor.core.api.JPAODataBatchProcessor;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContext;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestProcessor;
 import com.sap.olingo.jpa.processor.core.api.JPAODataSessionContextAccess;
-import com.sap.olingo.jpa.processor.core.api.mapper.JakartaRequestMapper;
-import com.sap.olingo.jpa.processor.core.api.mapper.JakartaResponseMapper;
 import com.sap.olingo.jpa.processor.core.database.JPADefaultDatabaseProcessor;
 import com.sap.olingo.jpa.processor.core.processor.JPAODataInternalRequestContext;
 import com.sap.olingo.jpa.processor.core.util.HttpRequestHeaderDouble;
@@ -56,19 +56,22 @@ public class IntegrationTestHelper {
     final OData odata = OData.newInstance();
     final EntityManager em = emf.createEntityManager();
     final Map<String, List<String>> headers = Collections.emptyMap();
+    final JPAODataApiVersionAccess version = mock(JPAODataApiVersionAccess.class);
     this.req = getRequestMock(uriPrefix + urlPath, requestBody, headers);
     this.resp = getResponseMock();
     this.customContext = mock(JPAODataRequestContext.class);
     this.sessionContext = mock(JPAODataSessionContextAccess.class);
     final JPAEdmProvider edmProvider = new JPAEdmProvider(PUNIT_NAME, emf, null, enumPackages);
-    when(sessionContext.getEdmProvider()).thenReturn(edmProvider);
+    when(version.getEdmProvider()).thenReturn(edmProvider);
     when(sessionContext.getDatabaseProcessor()).thenReturn(new JPADefaultDatabaseProcessor());
     when(sessionContext.getOperationConverter()).thenReturn(new JPADefaultDatabaseProcessor());
+    when(sessionContext.getApiVersion(anyString())).thenReturn(version);
     when(customContext.getEntityManager()).thenReturn(em);
+    when(customContext.getVersion()).thenReturn("V1");
     final ODataHttpHandler handler = odata.createHandler(odata.createServiceMetadata(edmProvider,
         new ArrayList<>()));
     final JPAODataInternalRequestContext requestContext = new JPAODataInternalRequestContext(customContext,
-        sessionContext);
+        sessionContext, odata);
     handler.register(new JPAODataRequestProcessor(sessionContext, requestContext));
     handler.register(new JPAODataBatchProcessor(sessionContext, requestContext));
     handler.process(req, resp);
@@ -159,7 +162,6 @@ public class IntegrationTestHelper {
   public HttpServletResponse getResponseMock() throws IOException {
     final HttpServletResponse response = mock(HttpServletResponse.class, Answers.RETURNS_MOCKS);
     when(response.getOutputStream()).thenReturn(new OutPutStream());
-    // when(response.getBufferSize()).thenReturn(((OutPutStream) response.getOutputStream()).getSize());
     return response;
 
   }
@@ -187,7 +189,7 @@ public class IntegrationTestHelper {
 
     @Override
     public void setWriteListener(final WriteListener writeListener) {
-
+      // Not needed
     }
   }
 

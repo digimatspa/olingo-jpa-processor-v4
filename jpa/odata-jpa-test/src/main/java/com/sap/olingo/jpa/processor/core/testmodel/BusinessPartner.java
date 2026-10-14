@@ -29,41 +29,41 @@ import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmAnnotation;
 import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmDescriptionAssociation;
 import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmFunction;
-import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmFunctions;
 import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmIgnore;
 import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmParameter;
+import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmVisibleFor;
 
 @Inheritance
 @DiscriminatorColumn(name = "\"Type\"")
 @Entity(name = "BusinessPartner")
 @Table(schema = "\"OLINGO\"", name = "\"BusinessPartner\"")
 @EdmEntityType(extensionProvider = EmptyQueryExtensionProvider.class)
-@EdmFunctions({
-    @EdmFunction(
-        name = "CountRoles",
-        functionName = "COUNT_ROLES",
-        returnType = @EdmFunction.ReturnType(isCollection = true),
-        parameter = { @EdmParameter(name = "Amount", parameterName = "a", type = String.class),
-        }),
 
-    @EdmFunction(
-        name = "max",
-        functionName = "MAX",
-        isBound = false,
-        hasFunctionImport = false,
-        returnType = @EdmFunction.ReturnType(type = BigDecimal.class, isCollection = false),
-        parameter = { @EdmParameter(name = "Path", parameterName = "path", type = String.class),
-        }),
+@EdmFunction(
+    name = "CountRoles",
+    functionName = "COUNT_ROLES",
+    returnType = @EdmFunction.ReturnType(isCollection = true),
+    parameter = { @EdmParameter(name = "Amount", parameterName = "a", type = String.class),
+    })
 
-    @EdmFunction(
-        name = "IsPrime",
-        functionName = "IS_PRIME",
-        isBound = false,
-        hasFunctionImport = true,
-        returnType = @EdmFunction.ReturnType(type = Boolean.class, isNullable = false),
-        parameter = { @EdmParameter(name = "Number", type = BigDecimal.class, precision = 32, scale = 0) }),
+@EdmFunction(
+    name = "max",
+    functionName = "MAX",
+    isBound = false,
+    hasFunctionImport = false,
+    returnType = @EdmFunction.ReturnType(type = BigDecimal.class, isCollection = false),
+    parameter = { @EdmParameter(name = "Path", parameterName = "path", type = String.class)
+    },
+    visibleFor = @EdmVisibleFor("Person"))
 
-})
+@EdmFunction(
+    name = "IsPrime",
+    functionName = "IS_PRIME",
+    isBound = false,
+    hasFunctionImport = true,
+    returnType = @EdmFunction.ReturnType(type = Boolean.class, isNullable = false),
+    parameter = { @EdmParameter(name = "Number", type = BigDecimal.class, precision = 32, scale = 0) })
+
 public abstract class BusinessPartner implements KeyAccess {
   @Id
   @Column(name = "\"ID\"")
@@ -134,21 +134,10 @@ public abstract class BusinessPartner implements KeyAccess {
   }
 
   @Override
-  public boolean equals(final Object obj) {
-    if (this == obj)
-      return true;
-    if (obj == null)
-      return false;
-    if (getClass() != obj.getClass())
-      return false;
-    final BusinessPartner other = (BusinessPartner) obj;
-    if (iD == null) {
-      if (other.iD != null)
-        return false;
-    } else if (!iD.equals(other.iD)) {
-      return false;
-    }
-    return true;
+  public boolean equals(final Object object) {
+    if (object instanceof final BusinessPartner other)
+      return iD != null ? iD.equals(other.iD) : other.iD == null;
+    return false;
   }
 
   public PostalAddressData getAddress() {

@@ -221,8 +221,7 @@ public final class JPATypeConverter {
       return EdmPrimitiveTypeKind.GeographyLineString;
     else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.MultiLineString.class))
       return EdmPrimitiveTypeKind.GeographyMultiLineString;
-    else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.Polygon.class)
-            || jpaType.equals(org.locationtech.jts.geom.Polygon.class))
+    else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.Polygon.class))
       return EdmPrimitiveTypeKind.GeographyPolygon;
     else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.MultiPolygon.class))
       return EdmPrimitiveTypeKind.GeographyMultiPolygon;
@@ -243,7 +242,7 @@ public final class JPATypeConverter {
       return EdmPrimitiveTypeKind.GeometryLineString;
     else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.MultiLineString.class))
       return EdmPrimitiveTypeKind.GeometryMultiLineString;
-    else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.Polygon.class) || jpaType.equals(org.locationtech.jts.geom.Polygon.class))
+    else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.Polygon.class))
       return EdmPrimitiveTypeKind.GeometryPolygon;
     else if (jpaType.equals(org.apache.olingo.commons.api.edm.geo.MultiPolygon.class))
       return EdmPrimitiveTypeKind.GeometryMultiPolygon;

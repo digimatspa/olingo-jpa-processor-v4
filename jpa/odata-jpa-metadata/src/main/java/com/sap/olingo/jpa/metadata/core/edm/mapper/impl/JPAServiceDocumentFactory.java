@@ -12,29 +12,23 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelExcept
 
 public final class JPAServiceDocumentFactory {
 
-  private final JPAEdmNameBuilder nameBuilder;
-  private final Metamodel jpaMetamodel;
-  private final JPAEdmMetadataPostProcessor postProcessor;
-  private final String[] packageName;
-  private final List<AnnotationProvider> annotationProvider;
-
-  public JPAServiceDocumentFactory(final JPAEdmNameBuilder nameBuilder, final Metamodel jpaMetamodel,
-      final JPAEdmMetadataPostProcessor postProcessor, final String[] packageName,
-      final List<AnnotationProvider> annotationProvider) {
-    super();
-    this.nameBuilder = nameBuilder;
-    this.jpaMetamodel = jpaMetamodel;
-    this.postProcessor = postProcessor;
-    this.packageName = packageName;
-    this.annotationProvider = annotationProvider;
-  }
-
   /**
    * Late creation of the service document. A service document contains at least one schema and a container.
+   * @param wrapperAvailable
    * @return
    * @throws ODataJPAModelException
    */
-  public JPAServiceDocument getServiceDocument() throws ODataJPAModelException {
-    return new IntermediateServiceDocument(nameBuilder, jpaMetamodel, postProcessor, packageName, annotationProvider);
+  public JPAServiceDocument getServiceDocument(final JPAEdmNameBuilder nameBuilder, final Metamodel jpaMetamodel,
+      final JPAEdmMetadataPostProcessor postProcessor, final String[] packageName,
+      final List<AnnotationProvider> annotationProvider, final boolean wrapperAvailable) throws ODataJPAModelException {
+    return new IntermediateServiceDocument(nameBuilder, jpaMetamodel, postProcessor, packageName, annotationProvider,
+        wrapperAvailable);
+  }
+
+  public JPAServiceDocument asUserGroupRestricted(final JPAServiceDocument serviceDocument,
+      final List<String> userGroups, final boolean hideRestrictedProperties) throws ODataJPAModelException {
+    if (serviceDocument instanceof final IntermediateServiceDocument intermediate)
+      return intermediate.asUserGroupRestricted(userGroups, hideRestrictedProperties);
+    return serviceDocument;
   }
 }

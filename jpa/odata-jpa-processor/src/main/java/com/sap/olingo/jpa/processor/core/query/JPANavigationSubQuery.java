@@ -22,7 +22,6 @@ import org.apache.olingo.server.api.uri.queryoption.expression.VisitableExpressi
 
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPADescriptionAttribute;
-import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAElement;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAOnConditionItem;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
@@ -30,6 +29,7 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.processor.core.api.JPAODataClaimProvider;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAIllegalAccessException;
+import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAQueryException;
 import com.sap.olingo.jpa.processor.core.filter.JPAFilterElementComplier;
 import com.sap.olingo.jpa.processor.core.filter.JPAOperationConverter;
@@ -42,17 +42,28 @@ public abstract class JPANavigationSubQuery extends JPAAbstractSubQuery {
       final EntityManager em, final JPAAbstractQuery parent, final From<?, ?> from,
       final JPAAssociationPath association, final Optional<JPAODataClaimProvider> claimsProvider,
       final List<UriParameter> keyPredicates) throws ODataApplicationException {
+
     super(odata, sd, jpaEntity, em, parent, from, association, claimsProvider);
+
     this.keyPredicates = keyPredicates;
-    this.subQuery = parent.getQuery().subquery(this.jpaEntity.getKeyType());
+    this.subQuery = createSubQuery(parent);
     this.locale = parent.getLocale();
     createRoots(association);
+  }
+
+  Subquery<?> createSubQuery(final JPAAbstractQuery parent) {
+    // Null if there is no et for collection property
+    if (this.jpaEntity == null)
+      return parent.getQuery().subquery(((JPAEntityType) association.getSourceType()).getKeyType());
+    else
+      return parent.getQuery().subquery(this.jpaEntity.getKeyType());
   }
 
   final void buildExpression(final VisitableExpression expression, final List<String> groups)
       throws ODataApplicationException {
     this.filterComplier = new JPAFilterElementComplier(odata, sd, em, jpaEntity, new JPAOperationConverter(cb,
-        getContext().getOperationConverter()), null, this, expression, association, groups);
+        getContext().getOperationConverter(), getContext().getQueryDirectives()), null, this, expression, association,
+        groups);
     createDescriptionJoin();
   }
 
@@ -77,9 +88,7 @@ public abstract class JPANavigationSubQuery extends JPAAbstractSubQuery {
 
     final List<Expression<?>> groupByList = new ArrayList<>();
     for (final JPAOnConditionItem onCondition : conditionItems) {
-      Path<?> subPath = from;
-      for (final JPAElement jpaPathElement : onCondition.getRightPath().getPath())
-        subPath = subPath.get(jpaPathElement.getInternalName());
+      final var subPath = ExpressionUtility.convertToCriteriaPath(from, onCondition.getRightPath().getPath());
       groupByList.add(subPath);
     }
     subQuery.groupBy(groupByList);
@@ -111,5 +120,11 @@ public abstract class JPANavigationSubQuery extends JPAAbstractSubQuery {
   @Override
   public List<Path<Comparable<?>>> getLeftPaths() throws ODataJPAIllegalAccessException {
     return Collections.emptyList();
+  }
+
+  @Override
+  protected Expression<Boolean> createWhereEnhancement(final JPAEntityType et, final From<?, ?> from)
+      throws ODataJPAProcessorException {
+    return null;
   }
 }

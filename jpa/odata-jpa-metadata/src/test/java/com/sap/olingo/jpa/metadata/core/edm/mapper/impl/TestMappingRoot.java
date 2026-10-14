@@ -26,7 +26,7 @@ public class TestMappingRoot {
       "com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivision";
 
   @BeforeAll
-  public static void setupClass() {
+  static void setupClass() {
     emf = JPAEntityManagerFactory.getEntityManagerFactory(PUNIT_NAME, DataSourceHelper.createDataSource(
         DataSourceHelper.DB_HSQLDB));
     errorEmf = JPAEntityManagerFactory.getEntityManagerFactory(ERROR_PUNIT, DataSourceHelper.createDataSource(
@@ -39,6 +39,16 @@ public class TestMappingRoot {
   @SuppressWarnings("unchecked")
   <T> EntityType<T> getEntityType(final Class<T> type) {
     for (final EntityType<?> entityType : etList) {
+      if (entityType.getJavaType().equals(type)) {
+        return (EntityType<T>) entityType;
+      }
+    }
+    return null;
+  }
+
+  @SuppressWarnings("unchecked")
+  <T> EntityType<T> getErrorEntityType(final Class<T> type) {
+    for (final EntityType<?> entityType : errorEmf.getMetamodel().getEntities()) {
       if (entityType.getJavaType().equals(type)) {
         return (EntityType<T>) entityType;
       }

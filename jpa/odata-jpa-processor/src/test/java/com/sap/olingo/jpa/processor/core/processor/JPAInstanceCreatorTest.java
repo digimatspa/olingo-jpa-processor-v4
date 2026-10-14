@@ -54,7 +54,7 @@ class JPAInstanceCreatorTest {
     buildTypeWithCompoundKey(ClassWithIdClassConstructor.class);
     cut = new JPAInstanceCreator<>(odata, et);
 
-    final Optional<Constructor<Object>> constructor = cut.determinePreferedConstructor();
+    final Optional<Constructor<Object>> constructor = cut.determinePreferredConstructor();
 
     assertTrue(constructor.isPresent());
     assertEquals(1, constructor.get().getParameterCount());
@@ -66,7 +66,7 @@ class JPAInstanceCreatorTest {
     buildTypeWithCompoundKey(ClassWithMultipleKeysSetter.class);
     cut = new JPAInstanceCreator<>(odata, et);
 
-    final Optional<Constructor<Object>> constructor = cut.determinePreferedConstructor();
+    final Optional<Constructor<Object>> constructor = cut.determinePreferredConstructor();
 
     assertTrue(constructor.isPresent());
     assertEquals(0, constructor.get().getParameterCount());
@@ -78,7 +78,7 @@ class JPAInstanceCreatorTest {
     buildTypeWithCompoundKey(ClassWithMultipleKeysConstructor.class);
     cut = new JPAInstanceCreator<>(odata, et);
 
-    final Optional<Constructor<Object>> constructor = cut.determinePreferedConstructor();
+    final Optional<Constructor<Object>> constructor = cut.determinePreferredConstructor();
 
     assertFalse(constructor.isPresent());
   }
@@ -109,7 +109,7 @@ class JPAInstanceCreatorTest {
     });
     when(et.hasCompoundKey()).thenReturn(false);
     cut = new JPAInstanceCreator<>(odata, et);
-    final Optional<Constructor<Object>> constructor = cut.determinePreferedConstructor();
+    final Optional<Constructor<Object>> constructor = cut.determinePreferredConstructor();
     assertTrue(constructor.isPresent());
     assertEquals(1, constructor.get().getParameterCount());
     assertEquals(UUID.class, constructor.get().getParameterTypes()[0]);
@@ -121,7 +121,7 @@ class JPAInstanceCreatorTest {
     final List<JPAAttribute> keys = Arrays.asList(fillOneKey("key", UUID.class, EdmPrimitiveTypeKind.Guid));
     buildTypeWithSingleKey(keys);
     cut = new JPAInstanceCreator<>(odata, et);
-    final Optional<Constructor<Object>> constructor = cut.determinePreferedConstructor();
+    final Optional<Constructor<Object>> constructor = cut.determinePreferredConstructor();
     assertTrue(constructor.isPresent());
     assertEquals(1, constructor.get().getParameterCount());
     assertEquals(UUID.class, constructor.get().getParameterTypes()[0]);
@@ -144,7 +144,7 @@ class JPAInstanceCreatorTest {
     });
     when(et.hasCompoundKey()).thenReturn(true);
     cut = new JPAInstanceCreator<>(odata, et);
-    final Optional<Constructor<Object>> constructor = cut.determinePreferedConstructor();
+    final Optional<Constructor<Object>> constructor = cut.determinePreferredConstructor();
     assertFalse(constructor.isPresent());
   }
 
@@ -166,7 +166,7 @@ class JPAInstanceCreatorTest {
     });
     when(et.hasCompoundKey()).thenReturn(false);
     cut = new JPAInstanceCreator<>(odata, et);
-    assertThrows(ODataJPAProcessorException.class, () -> cut.determinePreferedConstructor());
+    assertThrows(ODataJPAProcessorException.class, () -> cut.determinePreferredConstructor());
   }
 
   @Test
@@ -255,7 +255,7 @@ class JPAInstanceCreatorTest {
   }
 
   @Test
-  void testCreateInstanceRethrowsException() throws ODataJPAProcessorException, ODataJPAModelException {
+  void testCreateInstanceRethrowsException() throws ODataJPAModelException {
 
     final List<JPAAttribute> keys = Arrays.asList(fillOneKey("key", UUID.class, EdmPrimitiveTypeKind.Guid));
     buildTypeWithSingleKey(keys);
@@ -321,7 +321,8 @@ class JPAInstanceCreatorTest {
     when(et.getKey()).thenReturn(keys);
   }
 
-  private JPAAttribute fillOneKey(final String name, final Class<?> type, final EdmPrimitiveTypeKind edmType) throws ODataJPAModelException {
+  private JPAAttribute fillOneKey(final String name, final Class<?> type, final EdmPrimitiveTypeKind edmType)
+      throws ODataJPAModelException {
     final JPAAttribute id1 = mock(JPAAttribute.class);
     final JPAPath id1Path = mock(JPAPath.class);
     final CsdlProperty id1Property = mock(CsdlProperty.class);

@@ -3,80 +3,82 @@ package com.sap.olingo.jpa.processor.core.processor;
 import static com.sap.olingo.jpa.processor.core.converter.JPAExpandResult.ROOT_RESULT_KEY;
 import static com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException.MessageKeys.ODATA_MAXPAGESIZE_NOT_A_NUMBER;
 import static com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException.MessageKeys.QUERY_PREPARATION_ERROR;
-import static com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException.MessageKeys.QUERY_RESULT_CONV_ERROR;
+import static com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException.MessageKeys.VALIDATION_NOT_POSSIBLE_TOO_MANY_RESULTS;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
+import jakarta.persistence.Tuple;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.olingo.commons.api.data.ComplexValue;
-import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.data.Property;
-import org.apache.olingo.commons.api.edm.EdmBindingTarget;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.ex.ODataException;
 import org.apache.olingo.commons.api.format.ContentType;
+import org.apache.olingo.commons.api.http.HttpHeader;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.ODataRequest;
 import org.apache.olingo.server.api.ODataResponse;
 import org.apache.olingo.server.api.ServiceMetadata;
-import org.apache.olingo.server.api.serializer.SerializerResult;
+import org.apache.olingo.server.api.etag.PreconditionException;
 import org.apache.olingo.server.api.uri.UriInfoResource;
 import org.apache.olingo.server.api.uri.UriResource;
 import org.apache.olingo.server.api.uri.UriResourceKind;
 import org.apache.olingo.server.api.uri.UriResourcePartTyped;
-import org.apache.olingo.server.api.uri.queryoption.CountOption;
-import org.apache.olingo.server.api.uri.queryoption.SystemQueryOption;
 import org.apache.olingo.server.api.uri.queryoption.SystemQueryOptionKind;
 
+import com.sap.olingo.jpa.metadata.api.JPAHttpHeaderMap;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAnnotatable;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
-import com.sap.olingo.jpa.processor.core.api.JPAODataPage;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContextAccess;
-import com.sap.olingo.jpa.processor.core.api.JPAServiceDebugger.JPARuntimeMeasurement;
 import com.sap.olingo.jpa.processor.core.converter.JPAExpandResult;
-import com.sap.olingo.jpa.processor.core.converter.JPATupleChildConverter;
+import com.sap.olingo.jpa.processor.core.converter.JPATupleRowConverter;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPANotImplementedException;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessException;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException;
-import com.sap.olingo.jpa.processor.core.query.JPAAbstractExpandQuery;
+import com.sap.olingo.jpa.processor.core.exception.ODataJPAQueryException;
 import com.sap.olingo.jpa.processor.core.query.JPACollectionItemInfo;
 import com.sap.olingo.jpa.processor.core.query.JPACollectionJoinQuery;
 import com.sap.olingo.jpa.processor.core.query.JPAConvertibleResult;
 import com.sap.olingo.jpa.processor.core.query.JPAExpandItemInfo;
 import com.sap.olingo.jpa.processor.core.query.JPAExpandItemInfoFactory;
 import com.sap.olingo.jpa.processor.core.query.JPAExpandQueryFactory;
-import com.sap.olingo.jpa.processor.core.query.JPAExpandQueryResult;
+import com.sap.olingo.jpa.processor.core.query.JPAJoinCountQuery;
 import com.sap.olingo.jpa.processor.core.query.JPAJoinQuery;
 import com.sap.olingo.jpa.processor.core.query.JPAKeyBoundary;
 import com.sap.olingo.jpa.processor.core.query.JPANavigationPropertyInfo;
 import com.sap.olingo.jpa.processor.core.query.Utility;
+import com.sap.olingo.jpa.processor.core.serializer.JPAEntityCollectionExtension;
 
 public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestProcessor {
+  private static final Log LOGGER = LogFactory.getLog(JPANavigationRequestProcessor.class);
   private final ServiceMetadata serviceMetadata;
   private final UriResource lastItem;
-  private final JPAODataPage page;
 
   public JPANavigationRequestProcessor(final OData odata, final ServiceMetadata serviceMetadata,
-      final JPAODataRequestContextAccess requestContext)
-      throws ODataException {
+      final JPAODataRequestContextAccess requestContext) throws ODataException {
 
     super(odata, requestContext);
     this.serviceMetadata = serviceMetadata;
-    final List<UriResource> resourceParts = uriInfo.getUriResourceParts();
+    final var resourceParts = uriInfo.getUriResourceParts();
     this.lastItem = resourceParts.get(resourceParts.size() - 1);
-    this.page = requestContext.getPage();
   }
 
   @Override
   public <K extends Comparable<K>> void retrieveData(final ODataRequest request, final ODataResponse response,
       final ContentType responseFormat) throws ODataException {
 
-    try (JPARuntimeMeasurement measurement = debugger.newMeasurement(this, "retrieveData")) {
-
+    try (var measurement = debugger.newMeasurement(this, "retrieveData")) {
       checkRequestSupported();
       // Create a JPQL Query and execute it
       JPAJoinQuery query = null;
@@ -86,32 +88,34 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
         throw new ODataJPAProcessorException(QUERY_PREPARATION_ERROR, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
       }
 
-      final JPAConvertibleResult result = query.execute();
+      final var result = query.execute();
+      // Validate If-Match and If-None-Match headers
+      final var conditionValidationResult = validateEntityTag(result, requestContext.getHeader());
       // Read Expand and Collection
-      final Optional<JPAKeyBoundary> keyBoundary = result.getKeyBoundary(requestContext, query.getNavigationInfo(),
-          page);
-      final JPAExpandWatchDog watchDog = new JPAExpandWatchDog(determineTargetEntitySet(requestContext));
-      watchDog.watch(uriInfo.getExpandOption(), uriInfo.getUriResourceParts());
-      result.putChildren(readExpandEntities(request.getAllHeaders(), query.getNavigationInfo(), uriInfo, keyBoundary,
-          watchDog));
+      JPAEntityCollectionExtension entityCollection;
+      if (conditionValidationResult == JPAETagValidationResult.SUCCESS && !isRootResultEmpty(result)) {
+        final var keyBoundary = result.getKeyBoundary(requestContext, query.getNavigationInfo());
+        final var watchDog = new JPAExpandWatchDog(determineTargetEntitySet(requestContext));
+        watchDog.watch(uriInfo.getExpandOption(), uriInfo.getUriResourceParts());
+        result.putChildren(readExpandEntities(request.getAllHeaders(), query.getNavigationInfo(), uriInfo, keyBoundary,
+            watchDog));
+      }
       // Convert tuple result into an OData Result
-      EntityCollection entityCollection;
-      try (JPARuntimeMeasurement converterMeasurement = debugger.newMeasurement(this, "convertResult")) {
-        entityCollection = result.asEntityCollection(new JPATupleChildConverter(sd, odata.createUriHelper(),
-            serviceMetadata, requestContext)).get(ROOT_RESULT_KEY);
+      try (var converterMeasurement = debugger.newMeasurement(this, "convertResult")) {
+        entityCollection = result.asEntityCollection(new JPATupleRowConverter(
+            ((JPAExpandResult) result).getEntityType(), sd, odata.createUriHelper(), serviceMetadata, requestContext))
+            .get(ROOT_RESULT_KEY);
+
       } catch (final ODataApplicationException e) {
-        throw new ODataJPAProcessorException(QUERY_RESULT_CONV_ERROR, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
+        throw new ODataJPAProcessorException(ODataJPAProcessorException.MessageKeys.QUERY_RESULT_CONV_ERROR,
+            HttpStatusCode.INTERNAL_SERVER_ERROR, e);
       }
       // Set Next Link
-      try{
-        entityCollection.setNext(new URI(request.getRawBaseUri() + "/" + this.buildNextLink(page)));
-      } catch (URISyntaxException e) {
-          throw new RuntimeException(e);
-      }
-        // Count results if requested
-      final CountOption countOption = uriInfo.getCountOption();
+      entityCollection.setNext(buildNextLink(uriInfo));
+      // Count results if requested
+      final var countOption = uriInfo.getCountOption();
       if (countOption != null && countOption.getValue())
-        entityCollection.setCount(new JPAJoinQuery(odata, requestContext)
+        entityCollection.setCount(new JPAJoinCountQuery(odata, requestContext)
             .countResults().intValue());
 
       /*
@@ -140,15 +144,19 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
        * of
        * the related single entity. If no entity is related, the service returns 204 No Content.
        */
-      if (hasNoContent(entityCollection.getEntities()))
+      if (conditionValidationResult == JPAETagValidationResult.NOT_MODIFIED)
+        createNotModifiedResponse(response, entityCollection);
+      else if (conditionValidationResult == JPAETagValidationResult.PRECONDITION_FAILED)
+        createPreconditionFailedResponse(response);
+      else if (hasNoContent(entityCollection))
         response.setStatusCode(HttpStatusCode.NO_CONTENT.getStatusCode());
-      else if (doesNotExists(entityCollection.getEntities()))
+      else if (doesNotExists(entityCollection.hasResults()))
         response.setStatusCode(HttpStatusCode.NOT_FOUND.getStatusCode());
       // 200 OK indicates that either a result was found or that the a Entity Collection query had no result
-      else if (entityCollection.getEntities() != null) {
-        try (JPARuntimeMeasurement serializerMeasurement = debugger.newMeasurement(this, "serialize")) {
-          final SerializerResult serializerResult = serializer.serialize(request, entityCollection);
-          createSuccessResponse(response, responseFormat, serializerResult);
+      else if (((EntityCollection) entityCollection).getEntities() != null) {
+        try (var serializerMeasurement = debugger.newMeasurement(this, "serialize")) {
+          final var serializerResult = serializer.serialize(request, entityCollection);
+          createSuccessResponse(response, responseFormat, serializerResult, entityCollection);
         }
       } else {
         // A request returns 204 No Content if the requested resource has the null value, or if the service applies a
@@ -158,84 +166,95 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
     }
   }
 
-  private void checkRequestSupported() throws ODataJPAProcessException {
+  void checkRequestSupported() throws ODataJPAProcessException {
     if (uriInfo.getApplyOption() != null)
       throw new ODataJPANotImplementedException("$apply");
   }
 
-  private URI buildNextLink(final JPAODataPage page) throws ODataJPAProcessorException {
-    if (page != null && page.skipToken() != null) {
+  /**
+   * Validate
+   * <a href="https://datatracker.ietf.org/doc/html/rfc2616#section-14.24">If-Match</a> and
+   * <a href="https://datatracker.ietf.org/doc/html/rfc2616#section-14.26">If-None-Match</a>
+   * headers
+   * @param result Query result
+   * @param header List of all request headers
+   * @throws ODataJPAProcessorException
+   */
+  JPAETagValidationResult validateEntityTag(final JPAConvertibleResult result, final JPAHttpHeaderMap header)
+      throws ODataJPAProcessorException {
+
+    try {
+      if (result instanceof final JPAExpandResult expandResult) {
+        if (expandResult.getEntityType().hasEtag()) {
+
+          final var results = expandResult.getResult(ROOT_RESULT_KEY);
+          final var ifNoneMatchEntityTags = getMatchHeader(header, HttpHeader.IF_NONE_MATCH);
+          final var ifMatchEntityTags = getMatchHeader(header, HttpHeader.IF_MATCH);
+          if (results.size() == 1) {
+            final var etagAlias = expandResult.getEntityType().getEtagPath().getAlias();
+            final var etag = requestContext.getEtagHelper().asEtag(expandResult.getEntityType(),
+                results.get(0).get(etagAlias));
+            if (requestContext.getEtagHelper().checkReadPreconditions(etag, ifMatchEntityTags, ifNoneMatchEntityTags))
+              return JPAETagValidationResult.NOT_MODIFIED;
+          } else if (!preconditionCheckSupported(results, ifNoneMatchEntityTags, ifMatchEntityTags)) {
+            throw new ODataJPAProcessorException(VALIDATION_NOT_POSSIBLE_TOO_MANY_RESULTS,
+                HttpStatusCode.BAD_REQUEST);
+          }
+        }
+      } else {
+        LOGGER.warn("Result is not of type JPAExpandResult. ETag validation not possible");
+      }
+    } catch (final ODataJPAModelException | ODataJPAQueryException e) {
+      throw new ODataJPAProcessorException(e, HttpStatusCode.INTERNAL_SERVER_ERROR);
+    }
+
+    catch (final PreconditionException e) {
+      return JPAETagValidationResult.PRECONDITION_FAILED;
+    }
+    return JPAETagValidationResult.SUCCESS;
+  }
+
+  private boolean isRootResultEmpty(final JPAConvertibleResult result) {
+    if (result instanceof final JPAExpandResult expandResult) {
+      return expandResult.getResult(ROOT_RESULT_KEY).isEmpty();
+    }
+    return false;
+  }
+
+  private List<String> getMatchHeader(final JPAHttpHeaderMap headers, final String matchHeader) {
+    return Optional.ofNullable(headers.get(matchHeader)).orElseGet(() -> headers.get(
+        matchHeader.toLowerCase(Locale.ENGLISH)));
+  }
+
+  private boolean preconditionCheckSupported(final List<Tuple> results, final List<String> ifNoneMatchEntityTags,
+                                             final List<String> ifMatchEntityTags) {
+    return results.size() <= 1
+        || (isEmpty(ifMatchEntityTags) && isEmpty(ifNoneMatchEntityTags));
+  }
+
+  private boolean isEmpty(final List<String> list) {
+    return list == null || list.isEmpty();
+  }
+
+  private URI buildNextLink(final UriInfoResource uriInfo) throws ODataJPAProcessorException {
+    if (uriInfo != null && uriInfo.getSkipTokenOption() != null) {
       try {
-        if (page.skipToken() instanceof String)
-          return new URI(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?"
-              + SystemQueryOptionKind.SKIPTOKEN.toString() + "='" + page.skipToken() + "'");
-        else
-          return new URI(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?"
-              + SystemQueryOptionKind.SKIPTOKEN.toString() + "=" + page.skipToken().toString());
+        final var skipToken = uriInfo.getSkipTokenOption().getValue();
+        return new URI(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?"
+            + SystemQueryOptionKind.SKIPTOKEN.toString() + "=" + skipToken);
       } catch (final URISyntaxException e) {
-        throw new ODataJPAProcessorException(ODATA_MAXPAGESIZE_NOT_A_NUMBER, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
-      }
-    }
-    else if(page != null && page.top() != 0 && page.skip() != 0){
-      int newSkipValue = page.skip() + page.top();
-      try {
-
-        StringBuilder nextLinkBuilder = new StringBuilder(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?");
-        List<SystemQueryOption> systemQueryOptions = new ArrayList<>(page.uriInfo().getSystemQueryOptions());
-        for (int i = 0; i < systemQueryOptions.size(); i++) {
-          SystemQueryOption option = systemQueryOptions.get(i);
-          nextLinkBuilder.append(option.getKind().toString()).append("=")
-                  .append(option.getKind() == SystemQueryOptionKind.SKIP ? newSkipValue : option.getText());
-
-          nextLinkBuilder = new StringBuilder(nextLinkBuilder.toString().replaceAll("'", "%27"));
-          nextLinkBuilder = new StringBuilder(nextLinkBuilder.toString().replaceAll(" ", "%20"));
-
-          if (i < systemQueryOptions.size() - 1) {
-            nextLinkBuilder.append("&");
-          }
-        }
-
-          return new URI(nextLinkBuilder.toString());
-      }
-      catch (final URISyntaxException e) {
-        throw new ODataJPAProcessorException(ODATA_MAXPAGESIZE_NOT_A_NUMBER, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
-      }
-    }
-    else if(page != null && page.top() != 0){
-      int skipValue = page.top();
-      try {
-
-        StringBuilder nextLinkBuilder = new StringBuilder(Utility.determineBindingTarget(uriInfo.getUriResourceParts()).getName() + "?");
-        List<SystemQueryOption> systemQueryOptions = new ArrayList<>(page.uriInfo().getSystemQueryOptions());
-        for (int i = 0; i < systemQueryOptions.size(); i++) {
-          SystemQueryOption option = systemQueryOptions.get(i);
-          nextLinkBuilder.append(option.getKind().toString()).append("=")
-                  .append(option.getText());
-
-          nextLinkBuilder = new StringBuilder(nextLinkBuilder.toString().replaceAll("'", "%27"));
-          nextLinkBuilder = new StringBuilder(nextLinkBuilder.toString().replaceAll(" ", "%20"));
-
-          if (i < systemQueryOptions.size() - 1) {
-            nextLinkBuilder.append("&");
-          }
-        }
-        nextLinkBuilder.append("&").append(SystemQueryOptionKind.SKIP).append("=").append(skipValue);
-
-        return new URI(nextLinkBuilder.toString());
-      }
-      catch (final URISyntaxException e) {
         throw new ODataJPAProcessorException(ODATA_MAXPAGESIZE_NOT_A_NUMBER, HttpStatusCode.INTERNAL_SERVER_ERROR, e);
       }
     }
     return null;
   }
 
-  private boolean complexHasNoContent(final List<Entity> entities) {
+  private boolean complexHasNoContent(final JPAEntityCollectionExtension entityCollection) {
     final String name;
-    if (entities.isEmpty())
+    if (!entityCollection.hasResults())
       return false;
     name = Utility.determineStartNavigationPath(uriInfo.getUriResourceParts()).getProperty().getName();
-    final Property property = entities.get(0).getProperty(name);
+    final var property = entityCollection.getFirstResult().getProperty(name);
     if (property != null) {
       for (final Property p : ((ComplexValue) property.getValue()).getValue()) {
         if (p.getValue() != null) {
@@ -246,9 +265,9 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
     return true;
   }
 
-  private boolean doesNotExists(final List<Entity> entities) throws ODataApplicationException {
+  private boolean doesNotExists(final boolean hasResults) throws ODataApplicationException {
     // handle ../Organizations('xx')
-    return (entities.isEmpty()
+    return (!hasResults
         && ((lastItem.getKind() == UriResourceKind.primitiveProperty
             || lastItem.getKind() == UriResourceKind.complexProperty
             || lastItem.getKind() == UriResourceKind.entitySet
@@ -256,8 +275,7 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
             || lastItem.getKind() == UriResourceKind.singleton));
   }
 
-  private boolean hasNoContent(final List<Entity> entities) {
-
+  private boolean hasNoContent(final JPAEntityCollectionExtension entityCollection) {
     if (lastItem.getKind() == UriResourceKind.primitiveProperty
         || lastItem.getKind() == UriResourceKind.navigationProperty
         || lastItem.getKind() == UriResourceKind.complexProperty) {
@@ -268,24 +286,22 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
       }
 
       if (lastItem.getKind() == UriResourceKind.primitiveProperty) {
-        return primitiveHasNoContent(entities);
+        return primitiveHasNoContent(entityCollection);
       }
       if (lastItem.getKind() == UriResourceKind.complexProperty) {
-        return complexHasNoContent(entities);
+        return complexHasNoContent(entityCollection);
       }
-      if (entities.isEmpty()) {
-        return true;
-      }
+      return !entityCollection.hasResults();
     }
     return false;
   }
 
-  private boolean primitiveHasNoContent(final List<Entity> entities) {
+  private boolean primitiveHasNoContent(final JPAEntityCollectionExtension entityCollection) {
     final String name;
-    if (entities.isEmpty())
+    if (!entityCollection.hasResults())
       return false;
     name = Utility.determineStartNavigationPath(uriInfo.getUriResourceParts()).getProperty().getName();
-    final Property property = entities.get(0).getProperty(name);
+    final var property = entityCollection.getFirstResult().getProperty(name);
     return (property != null && property.getValue() == null);
   }
 
@@ -315,10 +331,10 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
    * "http://docs.oasis-open.org/odata/odata/v4.0/errata02/os/complete/part2-url-conventions/odata-v4.0-errata02-os-part2-url-conventions-complete.html#_Toc406398162"
    * >OData Version 4.0 Part 2 - 5.1.2 System Query Option $expand</a> boundary
    * @param headers
-   * @param naviStartEdmEntitySet
    * @param parentHops
    * @param uriResourceInfo
-   * @param parentWhere
+   * @param keyBoundary
+   * @param watchDog
    * @return
    * @throws ODataException
    */
@@ -326,9 +342,9 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
       final List<JPANavigationPropertyInfo> parentHops, final UriInfoResource uriResourceInfo,
       final Optional<JPAKeyBoundary> keyBoundary, final JPAExpandWatchDog watchDog) throws ODataException {
 
-    try (JPARuntimeMeasurement expandMeasurement = debugger.newMeasurement(this, "readExpandEntities")) {
+    try (var expandMeasurement = debugger.newMeasurement(this, "readExpandEntities")) {
 
-      final JPAExpandQueryFactory factory = new JPAExpandQueryFactory(odata, requestContext, cb);
+      final var factory = new JPAExpandQueryFactory(odata, requestContext, cb);
       final Map<JPAAssociationPath, JPAExpandResult> allExpResults = new HashMap<>();
       if (watchDog.getRemainingLevels() > 0) {
         // x/a?$expand=b/c($expand=d,e/f)&$filter=...&$top=3&$orderBy=...
@@ -342,11 +358,11 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
         // sub-query used within EXISTS.
         // Solution: Forward the highest and lowest key from the root and create a "between" those.
 
-        final List<JPAExpandItemInfo> itemInfoList = new JPAExpandItemInfoFactory()
-            .buildExpandItemInfo(sd, uriResourceInfo, parentHops);
+        final var itemInfoList = new JPAExpandItemInfoFactory(requestContext)
+            .buildExpandItemInfo(sd, uriResourceInfo, parentHops, keyBoundary, factory);
         for (final JPAExpandItemInfo item : watchDog.filter(itemInfoList)) {
-          final JPAAbstractExpandQuery expandQuery = factory.createQuery(item, keyBoundary);
-          final JPAExpandQueryResult expandResult = expandQuery.execute();
+          final var expandQuery = factory.createQuery(item, keyBoundary);
+          final var expandResult = expandQuery.execute();
           if (expandResult.getNoResults() > 0)
             // Only go to the next hop if the current one has a result
             expandResult.putChildren(readExpandEntities(headers, item.getHops(), item.getUriInfo(), keyBoundary,
@@ -356,10 +372,10 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
         watchDog.levelProcessed();
       }
       // process collection attributes
-      final List<JPACollectionItemInfo> collectionInfoList = new JPAExpandItemInfoFactory()
+      final var collectionInfoList = new JPAExpandItemInfoFactory(requestContext)
           .buildCollectionItemInfo(sd, uriResourceInfo, parentHops, requestContext.getGroupsProvider());
       for (final JPACollectionItemInfo item : collectionInfoList) {
-        final JPACollectionJoinQuery collectionQuery = new JPACollectionJoinQuery(odata, item,
+        final var collectionQuery = new JPACollectionJoinQuery(odata, item,
             new JPAODataInternalRequestContext(item.getUriInfo(), requestContext, headers), keyBoundary);
         final JPAExpandResult expandResult = collectionQuery.execute();
         allExpResults.put(item.getExpandAssociation(), expandResult);
@@ -371,7 +387,7 @@ public final class JPANavigationRequestProcessor extends JPAAbstractGetRequestPr
   private static Optional<JPAAnnotatable> determineTargetEntitySet(final JPAODataRequestContextAccess requestContext)
       throws ODataException {
 
-    final EdmBindingTarget bindingTarget = Utility.determineBindingTarget(requestContext.getUriInfo()
+    final var bindingTarget = Utility.determineBindingTarget(requestContext.getUriInfo()
         .getUriResourceParts());
     if (bindingTarget instanceof EdmEntitySet)
       return requestContext.getEdmProvider().getServiceDocument().getEntitySet(bindingTarget.getName())

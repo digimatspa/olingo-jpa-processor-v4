@@ -1,5 +1,6 @@
 package com.sap.olingo.jpa.processor.core.query;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,23 +15,27 @@ import javax.annotation.Nonnull;
 
 import jakarta.persistence.Tuple;
 
-import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.queryoption.SelectItem;
 import org.apache.olingo.server.api.uri.queryoption.SelectOption;
 
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.CardinalityValue;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
-import com.sap.olingo.jpa.processor.core.api.JPAODataPage;
+import com.sap.olingo.jpa.processor.core.api.JPAODataPageExpandInfo;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContextAccess;
+import com.sap.olingo.jpa.processor.core.api.JPAODataSkipTokenProvider;
 import com.sap.olingo.jpa.processor.core.converter.JPAExpandResult;
+import com.sap.olingo.jpa.processor.core.converter.JPAResultConverter;
 import com.sap.olingo.jpa.processor.core.converter.JPATupleChildConverter;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessException;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAQueryException;
+import com.sap.olingo.jpa.processor.core.serializer.JPAEntityCollection;
+import com.sap.olingo.jpa.processor.core.serializer.JPAEntityCollectionExtension;
 
 /**
  * Builds a hierarchy of expand results. One instance contains on the one hand of the result itself, a map which has the
@@ -43,10 +48,11 @@ public final class JPAExpandQueryResult implements JPAExpandResult, JPAConvertib
   private static final Map<String, List<Tuple>> EMPTY_RESULT;
   private final Map<JPAAssociationPath, JPAExpandResult> childrenResult;
   private final Map<String, List<Tuple>> jpaResult;
-  private Map<String, EntityCollection> odataResult;
+  private final Map<String, JPAEntityCollectionExtension> odataResult;
   private final Map<String, Long> counts;
   private final JPAEntityType jpaEntityType;
   private final Collection<JPAPath> requestedSelection;
+  private final Optional<JPAODataSkipTokenProvider> skipTokenProvider;
 
   static {
     EMPTY_RESULT = new HashMap<>(1);
@@ -65,11 +71,12 @@ public final class JPAExpandQueryResult implements JPAExpandResult, JPAConvertib
   }
 
   public JPAExpandQueryResult(final JPAEntityType jpaEntityType, final Collection<JPAPath> selectionPath) {
-    this(putEmptyResult(), Collections.emptyMap(), jpaEntityType, selectionPath);
+    this(putEmptyResult(), Collections.emptyMap(), jpaEntityType, selectionPath, Optional.empty());
   }
 
   public JPAExpandQueryResult(final Map<String, List<Tuple>> result, final Map<String, Long> counts,
-      @Nonnull final JPAEntityType jpaEntityType, final Collection<JPAPath> selectionPath) {
+      @Nonnull final JPAEntityType jpaEntityType, final Collection<JPAPath> selectionPath,
+      final Optional<JPAODataSkipTokenProvider> skipTokenProvider) {
 
     Objects.requireNonNull(jpaEntityType);
     childrenResult = new HashMap<>();
@@ -77,24 +84,47 @@ public final class JPAExpandQueryResult implements JPAExpandResult, JPAConvertib
     this.counts = counts;
     this.jpaEntityType = jpaEntityType;
     this.requestedSelection = selectionPath;
+    this.skipTokenProvider = skipTokenProvider;
+    this.odataResult = new HashMap<>(jpaResult.size());
   }
 
   @Override
-  public Map<String, EntityCollection> asEntityCollection(final JPATupleChildConverter converter)
+  public Map<String, JPAEntityCollectionExtension> asEntityCollection(final JPAResultConverter converter)
       throws ODataApplicationException {
 
-    convert(new JPATupleChildConverter(converter));
+    convert(converter, ROOT_RESULT_KEY, new ArrayList<>());
     return odataResult;
   }
 
   @Override
-  public void convert(final JPATupleChildConverter converter) throws ODataApplicationException {
-    if (odataResult == null) {
-      for (final Entry<JPAAssociationPath, JPAExpandResult> childResult : childrenResult.entrySet()) {
-        childResult.getValue().convert(converter);
-      }
-      odataResult = converter.getResult(this, requestedSelection);
+  public void convert(final JPAResultConverter converter) throws ODataApplicationException {
+    throw new IllegalAccessError("");
+  }
+
+  JPAEntityCollectionExtension convert(final JPAResultConverter converter, final String parentKey,
+      final List<JPAODataPageExpandInfo> expandInfo) throws ODataApplicationException {
+
+    if (!odataResult.containsKey(parentKey)) {
+      odataResult.put(parentKey, converter.getResult(this, requestedSelection, parentKey, expandInfo));
     }
+    return odataResult.get(parentKey);
+
+  }
+
+  private JPAEntityCollectionExtension convertOnDemand(final JPAResultConverter converter, final String parentKey,
+      final List<JPAODataPageExpandInfo> expandInfo) throws ODataApplicationException {
+
+    final var result = converter.getResult(this, requestedSelection, parentKey, expandInfo);
+    jpaResult.put(parentKey, null);
+    return result;
+  }
+
+  private JPAEntityCollectionExtension convert(final String key, final JPAResultConverter converter,
+      final JPAAssociationPath association, final List<JPAODataPageExpandInfo> expandInfo)
+      throws ODataApplicationException {
+    return association.cardinality().source == CardinalityValue.ONE
+        ? convertOnDemand(converter, key, expandInfo)
+        : convert(converter, key, expandInfo);
   }
 
   @Override
@@ -154,6 +184,11 @@ public final class JPAExpandQueryResult implements JPAExpandResult, JPAConvertib
     return jpaResult.get(key);
   }
 
+  @Override
+  public List<Tuple> removeResult(final String key) {
+    return jpaResult.put(key, null);
+  }
+
   /*
    * (non-Javadoc)
    *
@@ -181,27 +216,27 @@ public final class JPAExpandQueryResult implements JPAExpandResult, JPAConvertib
     return jpaResult;
   }
 
-  /**
-   * no key --> empty collection
-   * @param key
-   * @return
-   */
   @Override
-  public EntityCollection getEntityCollection(final String key) {
-    return odataResult.containsKey(key) ? odataResult.get(key) : new EntityCollection();
+  public JPAEntityCollectionExtension getEntityCollection(final String key, final JPAResultConverter converter,
+      final JPAAssociationPath association, final List<JPAODataPageExpandInfo> expandInfo)
+      throws ODataApplicationException {
+
+    return jpaResult.containsKey(key)
+        ? convert(key, converter, association, expandInfo)
+        : new JPAEntityCollection();
   }
 
   @Override
   public Optional<JPAKeyBoundary> getKeyBoundary(final JPAODataRequestContextAccess requestContext,
-      final List<JPANavigationPropertyInfo> hops, final JPAODataPage page) throws ODataJPAProcessException {
+      final List<JPANavigationPropertyInfo> hops) throws ODataJPAProcessException {
     try {
       if (!jpaResult.get(ROOT_RESULT_KEY).isEmpty()
           && (requestContext.getUriInfo().getExpandOption() != null
               || collectionPropertyRequested(requestContext))
-          && ((requestContext.getUriInfo().getTopOption() != null
-              || requestContext.getUriInfo().getSkipOption() != null)
-              || (page != null && (page.skip() != 0 || page.top() != Integer.MAX_VALUE)))) {
-        final JPAKeyPair boundary = new JPAKeyPair(jpaEntityType.getKey());
+          && (requestContext.getUriInfo().getTopOption() != null
+              || requestContext.getUriInfo().getSkipOption() != null)) {
+
+        final JPAKeyPair boundary = new JPAKeyPair(jpaEntityType.getKey(), requestContext.getQueryDirectives());
         for (final Tuple tuple : jpaResult.get(ROOT_RESULT_KEY)) {
           @SuppressWarnings("rawtypes")
           final Map<JPAAttribute, Comparable> key = createKey(tuple);
@@ -212,7 +247,12 @@ public final class JPAExpandQueryResult implements JPAExpandResult, JPAConvertib
     } catch (final ODataJPAModelException e) {
       throw new ODataJPAQueryException(e, HttpStatusCode.INTERNAL_SERVER_ERROR);
     }
-    return JPAConvertibleResult.super.getKeyBoundary(requestContext, hops, page);
+    return JPAConvertibleResult.super.getKeyBoundary(requestContext, hops);
+  }
+
+  @Override
+  public Collection<JPAPath> getRequestedSelection() {
+    return requestedSelection;
   }
 
   private boolean collectionPropertyRequested(final JPAODataRequestContextAccess requestContext)
@@ -241,5 +281,19 @@ public final class JPAExpandQueryResult implements JPAExpandResult, JPAConvertib
       keyMap.put(key, (Comparable) tuple.get(key.getExternalName()));
     }
     return keyMap;
+  }
+
+  @Override
+  public String getSkipToken(final List<JPAODataPageExpandInfo> foreignKeyStack) {
+    return skipTokenProvider
+        .map(provider -> provider.get(foreignKeyStack))
+        .map(this::convertToken)
+        .orElse(null);
+  }
+
+  private String convertToken(final Object skipToken) {
+    if (skipToken instanceof final String s)
+      return s;
+    return skipToken.toString();
   }
 }

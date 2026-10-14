@@ -3,7 +3,6 @@ package com.sap.olingo.jpa.processor.core.processor;
 import static com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException.MessageKeys.NO_METADATA_PROVIDER;
 import static org.apache.olingo.commons.api.http.HttpStatusCode.INTERNAL_SERVER_ERROR;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -16,7 +15,7 @@ import javax.annotation.Nullable;
 
 import jakarta.persistence.EntityManager;
 
-import org.apache.olingo.commons.api.ex.ODataException;
+import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriInfoResource;
 
@@ -29,19 +28,23 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.processor.core.api.JPAAbstractCUDRequestHandler;
 import com.sap.olingo.jpa.processor.core.api.JPACUDRequestHandler;
+import com.sap.olingo.jpa.processor.core.api.JPAODataApiVersionAccess;
 import com.sap.olingo.jpa.processor.core.api.JPAODataClaimProvider;
 import com.sap.olingo.jpa.processor.core.api.JPAODataDatabaseProcessor;
 import com.sap.olingo.jpa.processor.core.api.JPAODataDefaultTransactionFactory;
+import com.sap.olingo.jpa.processor.core.api.JPAODataEtagHelper;
 import com.sap.olingo.jpa.processor.core.api.JPAODataGroupProvider;
-import com.sap.olingo.jpa.processor.core.api.JPAODataPage;
+import com.sap.olingo.jpa.processor.core.api.JPAODataPagingProvider;
+import com.sap.olingo.jpa.processor.core.api.JPAODataPathInformation;
+import com.sap.olingo.jpa.processor.core.api.JPAODataQueryDirectives;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContext;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContextAccess;
-import com.sap.olingo.jpa.processor.core.api.JPAODataServiceContext;
 import com.sap.olingo.jpa.processor.core.api.JPAODataSessionContextAccess;
 import com.sap.olingo.jpa.processor.core.api.JPAODataTransactionFactory;
 import com.sap.olingo.jpa.processor.core.api.JPAServiceDebugger;
 import com.sap.olingo.jpa.processor.core.database.JPAODataDatabaseOperations;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAIllegalAccessException;
+import com.sap.olingo.jpa.processor.core.exception.ODataJPAIllegalArgumentException;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException;
 import com.sap.olingo.jpa.processor.core.query.ExpressionUtility;
 import com.sap.olingo.jpa.processor.core.serializer.JPASerializer;
@@ -54,7 +57,6 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
   private EntityManager em;
   private UriInfoResource uriInfo;
   private JPASerializer serializer;
-  private JPAODataPage page;
   private JPACUDRequestHandler cudRequestHandler;
   private JPAServiceDebugger debugger;
   private JPADebugSupportWrapper debugSupport;
@@ -66,13 +68,19 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
   private JPAODataDatabaseProcessor dbProcessor;
   private Optional<JPAEdmProvider> edmProvider;
   private JPAODataDatabaseOperations operationConverter;
+  private JPAODataQueryDirectives queryDirectives;
+  private JPAODataEtagHelper etagHelper;
+  private Optional<JPAODataPagingProvider> pagingProvider;
+  private JPAODataPathInformation pathInformation;
+  private String mappingPath;
 
   public JPAODataInternalRequestContext(@Nonnull final JPAODataRequestContext requestContext,
-      @Nonnull final JPAODataSessionContextAccess sessionContext) {
+      @Nonnull final JPAODataSessionContextAccess sessionContext, final OData odata) {
     this.header = new JPAHttpHeaderHashMap(Collections.emptyMap());
     copyRequestContext(requestContext, sessionContext);
     this.hookFactory = new JPAHookFactory(em, header, customParameter);
     initDebugger();
+    etagHelper = new JPAODataEtagHelperImpl(odata);
   }
 
   /**
@@ -83,7 +91,7 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
    */
   public JPAODataInternalRequestContext(final UriInfoResource uriInfo, final JPAODataRequestContextAccess context)
       throws ODataJPAProcessorException {
-    this(uriInfo, null, context, context.getHeader());
+    this(uriInfo, null, context, context.getHeader(), null);
   }
 
   /**
@@ -94,25 +102,12 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
    */
   public JPAODataInternalRequestContext(final UriInfoResource uriInfo, final JPAODataRequestContextAccess context,
       final Map<String, List<String>> header) throws ODataJPAProcessorException {
-    this(uriInfo, null, context, header);
-  }
-
-  JPAODataInternalRequestContext(final JPAODataPage page, final JPASerializer serializer,
-      final JPAODataRequestContextAccess context, final Map<String, List<String>> header)
-      throws ODataJPAIllegalAccessException, ODataJPAProcessorException {
-
-    copyContextValues(context);
-    this.serializer = serializer;
-    this.cudRequestHandler = this.cudRequestHandler == null ? new JPADefaultCUDRequestHandler()
-        : this.cudRequestHandler;
-    this.header = new JPAHttpHeaderHashMap(header);
-    this.customParameter = new JPARequestParameterHashMap(context.getRequestParameter());
-    this.hookFactory = new JPAHookFactory(em, this.header, customParameter);
-    setJPAODataPage(page);
+    this(uriInfo, null, context, header, null);
   }
 
   JPAODataInternalRequestContext(final UriInfoResource uriInfo, @Nullable final JPASerializer serializer,
-      final JPAODataRequestContextAccess context, final Map<String, List<String>> header)
+      final JPAODataRequestContextAccess context, final Map<String, List<String>> header,
+      final JPAODataPathInformation pathInformation)
       throws ODataJPAProcessorException {
 
     copyContextValues(context);
@@ -123,6 +118,7 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
     this.header = new JPAHttpHeaderHashMap(header);
     this.customParameter = new JPARequestParameterHashMap(context.getRequestParameter());
     this.hookFactory = new JPAHookFactory(em, this.header, customParameter);
+    this.pathInformation = pathInformation != null ? pathInformation : this.pathInformation;
   }
 
   @Override
@@ -181,11 +177,6 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
   }
 
   @Override
-  public JPAODataPage getPage() {
-    return page;
-  }
-
-  @Override
   public JPASerializer getSerializer() {
     return serializer;
   }
@@ -214,16 +205,9 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
     return locales;
   }
 
-  public void setEntityManager(@Nonnull final EntityManager em) {
-    this.em = Objects.requireNonNull(em);
-  }
-
   @Override
-  public void setJPAODataPage(@Nonnull final JPAODataPage page) throws ODataJPAIllegalAccessException {
-    if (this.uriInfo != null)
-      throw new ODataJPAIllegalAccessException();
-    this.setUriInfo(page.uriInfo());
-    this.page = Objects.requireNonNull(page);
+  public JPAODataEtagHelper getEtagHelper() {
+    return etagHelper;
   }
 
   @Override
@@ -233,7 +217,7 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
 
   @Override
   public void setUriInfo(@Nonnull final UriInfo uriInfo) throws ODataJPAIllegalAccessException {
-    if (this.page != null)
+    if (this.uriInfo != null)
       throw new ODataJPAIllegalAccessException();
     this.uriInfo = Objects.requireNonNull(uriInfo);
   }
@@ -254,6 +238,26 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
     return operationConverter;
   }
 
+  @Override
+  public JPAODataQueryDirectives getQueryDirectives() {
+    return queryDirectives;
+  }
+
+  @Override
+  public Optional<JPAODataPagingProvider> getPagingProvider() {
+    return pagingProvider;
+  }
+
+  @Override
+  public JPAODataPathInformation getPathInformation() {
+    return pathInformation;
+  }
+
+  @Override
+  public String getMappingPath() {
+    return mappingPath;
+  }
+
   private void copyContextValues(final JPAODataRequestContextAccess context)
       throws ODataJPAProcessorException {
     this.em = context.getEntityManager();
@@ -267,37 +271,63 @@ public final class JPAODataInternalRequestContext implements JPAODataRequestCont
     this.dbProcessor = context.getDatabaseProcessor();
     this.edmProvider = Optional.ofNullable(context.getEdmProvider());
     this.operationConverter = context.getOperationConverter();
+    this.queryDirectives = context.getQueryDirectives();
+    this.etagHelper = context.getEtagHelper();
+    this.pagingProvider = context.getPagingProvider();
+    this.pathInformation = context.getPathInformation();
   }
 
   private void copyRequestContext(@Nonnull final JPAODataRequestContext requestContext,
       @Nonnull final JPAODataSessionContextAccess sessionContext) {
 
-    em = requestContext.getEntityManager();
+    final var version = Optional.ofNullable(sessionContext.getApiVersion(requestContext.getVersion()))
+        .orElseThrow(() -> new ODataJPAIllegalArgumentException("Version missing"));
+
+    em = determineEntityManager(requestContext, version);
     claims = requestContext.getClaimsProvider();
     groups = requestContext.getGroupsProvider();
     cudRequestHandler = requestContext.getCUDRequestHandler();
-    debugSupport = requestContext.getDebuggerSupport() != null ? new JPADebugSupportWrapper(requestContext
-        .getDebuggerSupport()) : null;
+    debugSupport = requestContext.getDebuggerSupport() != null
+        ? new JPADebugSupportWrapper(requestContext.getDebuggerSupport())
+        : null;
     transactionFactory = requestContext.getTransactionFactory();
     locales = requestContext.getLocales();
-    customParameter = requestContext.getRequestParameter() != null ? requestContext.getRequestParameter()
+    customParameter = requestContext.getRequestParameter() != null
+        ? requestContext.getRequestParameter()
         : new JPARequestParameterHashMap();
     dbProcessor = sessionContext.getDatabaseProcessor();
     operationConverter = sessionContext.getOperationConverter();
-    edmProvider = determineEdmProvider(sessionContext, em);
+    edmProvider = determineEdmProvider(version);
+    queryDirectives = sessionContext.getQueryDirectives();
+    pagingProvider = Optional.ofNullable(sessionContext.getPagingProvider());
+    mappingPath = version.getMappingPath();
   }
 
-  private Optional<JPAEdmProvider> determineEdmProvider(final JPAODataSessionContextAccess sessionContext,
-      final EntityManager em) {
-    try {
-      return sessionContext.getEdmProvider() == null
-          && sessionContext instanceof final JPAODataServiceContext serviceContext
-              ? Optional.ofNullable(serviceContext.getEdmProvider(em))
-              : Optional.ofNullable(sessionContext.getEdmProvider());
-    } catch (final ODataException e) {
-      debugger.debug(this, Arrays.toString(e.getStackTrace()));
-      return Optional.empty();
-    }
+  private EntityManager determineEntityManager(final JPAODataRequestContext requestContext,
+      final JPAODataApiVersionAccess version) {
+    return requestContext.getEntityManager() != null
+        ? requestContext.getEntityManager()
+        : createEntityManager(version);
+  }
+
+  private EntityManager createEntityManager(final JPAODataApiVersionAccess version) {
+    return version != null
+        ? version.getEntityManagerFactory().createEntityManager()
+        : null;
+  }
+
+  private Optional<JPAEdmProvider> determineEdmProvider(final JPAODataApiVersionAccess apiVersion) {
+    return Optional.ofNullable(asUserGroupRestricted(apiVersion.getEdmProvider(), apiVersion
+        .hideRestrictedProperties()));
+  }
+
+  private JPAEdmProvider asUserGroupRestricted(final JPAEdmProvider unrestricted,
+      final boolean hideRestrictedProperties) {
+    if (unrestricted != null)
+      return groups.map(JPAODataGroupProvider::getGroups)
+          .map(roles -> unrestricted.asUserGroupRestricted(roles, hideRestrictedProperties))
+          .orElse(unrestricted);
+    return null;
   }
 
   private void createDefaultTransactionFactory() {

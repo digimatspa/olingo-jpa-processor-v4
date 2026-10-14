@@ -31,7 +31,6 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.processor.core.api.JPAClaimsPair;
 import com.sap.olingo.jpa.processor.core.api.JPAODataClaimProvider;
-import com.sap.olingo.jpa.processor.core.exception.ODataJPAIllegalAccessException;
 import com.sap.olingo.jpa.processor.core.testmodel.BusinessPartnerProtected;
 import com.sap.olingo.jpa.processor.core.testmodel.BusinessPartnerRoleProtected;
 import com.sap.olingo.jpa.processor.core.testmodel.JoinPartnerRoleRelation;
@@ -58,7 +57,7 @@ class JPANavigationFilterQueryTest extends TestBase {
 
   @SuppressWarnings("unchecked")
   @BeforeEach
-  public void setup() throws ODataException, ODataJPAIllegalAccessException {
+  void setup() throws ODataException {
     helper = getHelper();
     em = mock(EntityManager.class);
     parent = mock(JPAAbstractQuery.class);
@@ -68,7 +67,7 @@ class JPANavigationFilterQueryTest extends TestBase {
     uriResourceItem = mock(UriResourceNavigation.class);
     jpaEntityType = helper.getJPAEntityType(BusinessPartnerRoleProtected.class);
     cq = mock(CriteriaQuery.class);
-    cb = mock(CriteriaBuilder.class); // emf.getCriteriaBuilder();
+    cb = mock(CriteriaBuilder.class);
     subQuery = mock(Subquery.class);
     queryJoinTable = mock(Root.class);
     queryRoot = mock(Root.class);
@@ -79,7 +78,7 @@ class JPANavigationFilterQueryTest extends TestBase {
     when(em.getCriteriaBuilder()).thenReturn(cb);
     when(uriResourceItem.getKeyPredicates()).thenReturn(Collections.singletonList(key));
     when(parent.getQuery()).thenReturn(cq);
-    when(cq.subquery(any())).thenReturn(subQuery);
+    when(cq.subquery(any(Class.class))).thenReturn(subQuery);
     when(subQuery.from(JoinPartnerRoleRelation.class)).thenReturn(queryJoinTable);
     when(subQuery.from(BusinessPartnerRoleProtected.class)).thenReturn(queryRoot);
     when(claimsProvider.get("RoleCategory")).thenReturn(Collections.singletonList(new JPAClaimsPair<>("A")));

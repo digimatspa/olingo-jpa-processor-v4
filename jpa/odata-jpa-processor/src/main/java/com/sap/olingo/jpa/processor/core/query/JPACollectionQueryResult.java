@@ -9,7 +9,6 @@ import java.util.Map;
 import jakarta.persistence.Tuple;
 
 import org.apache.olingo.commons.api.data.Entity;
-import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.data.Property;
 import org.apache.olingo.commons.api.data.ValueType;
 import org.apache.olingo.server.api.ODataApplicationException;
@@ -18,9 +17,13 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
+import com.sap.olingo.jpa.processor.core.api.JPAODataPageExpandInfo;
 import com.sap.olingo.jpa.processor.core.converter.JPACollectionResult;
 import com.sap.olingo.jpa.processor.core.converter.JPAExpandResult;
+import com.sap.olingo.jpa.processor.core.converter.JPAResultConverter;
 import com.sap.olingo.jpa.processor.core.converter.JPATupleChildConverter;
+import com.sap.olingo.jpa.processor.core.serializer.JPAEntityCollection;
+import com.sap.olingo.jpa.processor.core.serializer.JPAEntityCollectionExtension;
 
 public class JPACollectionQueryResult implements JPACollectionResult, JPAConvertibleResult {
   private static final Map<String, List<Tuple>> EMPTY_RESULT;
@@ -68,11 +71,11 @@ public class JPACollectionQueryResult implements JPACollectionResult, JPAConvert
   }
 
   @Override
-  public Map<String, EntityCollection> asEntityCollection(final JPATupleChildConverter converter)
+  public Map<String, JPAEntityCollectionExtension> asEntityCollection(final JPAResultConverter converter)
       throws ODataApplicationException {
     this.collectionResult = converter.getCollectionResult(this, requestedSelection);
-    final Map<String, EntityCollection> result = new HashMap<>(1);
-    final EntityCollection collection = new EntityCollection();
+    final Map<String, JPAEntityCollectionExtension> result = new HashMap<>(1);
+    final JPAEntityCollection collection = new JPAEntityCollection();
     final Entity odataEntity = new Entity();
     final JPAAttribute leaf = (JPAAttribute) association.getPath().get(association.getPath().size() - 1);
 
@@ -89,8 +92,9 @@ public class JPACollectionQueryResult implements JPACollectionResult, JPAConvert
   }
 
   @Override
-  public void convert(final JPATupleChildConverter converter) throws ODataApplicationException {
-    this.collectionResult = converter.getCollectionResult(this, requestedSelection);
+  public void convert(final JPAResultConverter converter) throws ODataApplicationException {
+    if (this.collectionResult == null)
+      this.collectionResult = converter.getCollectionResult(this, requestedSelection);
   }
 
   @Override
@@ -114,12 +118,6 @@ public class JPACollectionQueryResult implements JPACollectionResult, JPAConvert
   }
 
   @Override
-  public EntityCollection getEntityCollection(final String key) {
-    // Not needed yet. Collections with navigation properties not supported
-    return new EntityCollection();
-  }
-
-  @Override
   public JPAEntityType getEntityType() {
     return jpaEntityType;
   }
@@ -132,6 +130,11 @@ public class JPACollectionQueryResult implements JPACollectionResult, JPAConvert
   @Override
   public List<Tuple> getResult(final String key) {
     return jpaResult.get(key);
+  }
+
+  @Override
+  public List<Tuple> removeResult(final String key) {
+    return jpaResult.remove(key);
   }
 
   @Override
@@ -148,5 +151,16 @@ public class JPACollectionQueryResult implements JPACollectionResult, JPAConvert
   public void putChildren(final Map<JPAAssociationPath, JPAExpandResult> childResults)
       throws ODataApplicationException {
     // Not needed yet. Collections with navigation properties not supported
+  }
+
+  @Override
+  public String getSkipToken(final List<JPAODataPageExpandInfo> foreignKeyStack) {
+    // No paging support for collection properties yet
+    return null;
+  }
+
+  @Override
+  public Collection<JPAPath> getRequestedSelection() {
+    return requestedSelection;
   }
 }

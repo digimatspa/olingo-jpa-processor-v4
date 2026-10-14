@@ -147,11 +147,11 @@ final class JPAPathImpl implements JPAPath {
     List<String> groups = null;
     for (final JPAElement pathElement : pathElements) {
       if (pathElement instanceof final IntermediateProperty intermediateProperty
-          && intermediateProperty.isPartOfGroup()) {
+          && intermediateProperty.hasUserGroupRestriction()) {
         if (groups == null)
-          groups = intermediateProperty.getGroups();
+          groups = intermediateProperty.getUserGroups();
         else {
-          final List<String> newGroups = ((IntermediateProperty) pathElement).getGroups();
+          final List<String> newGroups = ((IntermediateProperty) pathElement).getUserGroups();
           if (groups.size() != newGroups.size() || !groups.stream().allMatch(newGroups::contains))
             throw new ODataJPAModelException(NOT_SUPPORTED_MIXED_PART_OF_GROUP, alias);
         }

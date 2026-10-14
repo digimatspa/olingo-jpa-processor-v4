@@ -39,6 +39,7 @@ import jakarta.persistence.criteria.Subquery;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.processor.cb.ProcessorCriteriaBuilder;
 import com.sap.olingo.jpa.processor.cb.ProcessorCriteriaQuery;
+import com.sap.olingo.jpa.processor.cb.ProcessorSqlPatternProvider;
 import com.sap.olingo.jpa.processor.cb.exceptions.NotImplementedException;
 import com.sap.olingo.jpa.processor.cb.impl.ExpressionImpl.ParameterExpression;
 import com.sap.olingo.jpa.processor.cb.impl.PredicateImpl.BinaryExpressionPredicate.Operation;
@@ -47,11 +48,23 @@ import com.sap.olingo.jpa.processor.cb.joiner.SqlConvertible;
 class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
 
   private final JPAServiceDocument sd;
-  private final ParameterBuffer parameter;
+  private ParameterBuffer parameter;
+  private final ProcessorSqlPatternProvider sqlPattern;
 
-  CriteriaBuilderImpl(final JPAServiceDocument sd, final ParameterBuffer parameterBuffer) {
+  CriteriaBuilderImpl(final JPAServiceDocument sd, final ProcessorSqlPatternProvider sqlPattern) {
     this.sd = sd;
-    this.parameter = parameterBuffer;
+    this.parameter = new ParameterBuffer();
+    this.sqlPattern = sqlPattern;
+  }
+
+  @Override
+  public ParameterBuffer getParameterBuffer() {
+    return parameter;
+  }
+
+  @Override
+  public void resetParameterBuffer() {
+    this.parameter = new ParameterBuffer();
   }
 
   /**
@@ -188,41 +201,41 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    * @return coalesce expression
    */
   @Override
-  public <Y> Expression<Y> coalesce(@Nonnull final Expression<? extends Y> x, @Nonnull final Y y) {
-    return new ExpressionImpl.CoalesceExpression<Y>().value(x).value(literal(y));
+  public <Y> Expression<Y> coalesce(@Nonnull final Expression<? extends Y> expression, @Nonnull final Y y) {
+    return new ExpressionImpl.CoalesceExpression<Y>().value(expression).value(literal(y));
   }
 
   /**
    * Create an expression for string concatenation.
    * @param x string expression
-   * @param y string expression
+   * @param second string expression
    * @return expression corresponding to concatenation
    */
   @Override
-  public Expression<String> concat(@Nonnull final Expression<String> x, @Nonnull final Expression<String> y) {
-    return new ExpressionImpl.ConcatExpression(x, y);
+  public Expression<String> concat(@Nonnull final Expression<String> first, @Nonnull final Expression<String> second) {
+    return new ExpressionImpl.ConcatExpression(first, second, sqlPattern);
   }
 
   /**
    * Create an expression for string concatenation.
    * @param x string expression
-   * @param y string
+   * @param value string
    * @return expression corresponding to concatenation
    */
   @Override
-  public Expression<String> concat(@Nonnull final Expression<String> x, @Nonnull final String y) {
-    return new ExpressionImpl.ConcatExpression(x, literal(y));
+  public Expression<String> concat(@Nonnull final Expression<String> expression, @Nonnull final String value) {
+    return new ExpressionImpl.ConcatExpression(expression, literal(value), sqlPattern);
   }
 
   /**
    * Create an expression for string concatenation.
    * @param x string
-   * @param y string expression
+   * @param expression string expression
    * @return expression corresponding to concatenation
    */
   @Override
-  public Expression<String> concat(@Nonnull final String x, @Nonnull final Expression<String> y) {
-    return new ExpressionImpl.ConcatExpression(literal(x), y);
+  public Expression<String> concat(@Nonnull final String value, @Nonnull final Expression<String> expression) {
+    return new ExpressionImpl.ConcatExpression(literal(value), expression, sqlPattern);
   }
 
   /**
@@ -282,22 +295,22 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
 
   @Override
   public <T> CriteriaUpdate<T> createCriteriaUpdate(final Class<T> targetEntity) {
-    throw new NotImplementedException();
+    return new CriteriaUpdateImpl<>(sd, this, parameter, targetEntity, sqlPattern);
   }
 
   @Override
   public ProcessorCriteriaQuery<Object> createQuery() {
-    return new CriteriaQueryImpl<>(Object.class, sd, this);
+    return new CriteriaQueryImpl<>(Object.class, sd, this, sqlPattern);
   }
 
   @Override
   public <T> ProcessorCriteriaQuery<T> createQuery(final Class<T> resultClass) {
-    return new CriteriaQueryImpl<>(resultClass, sd, this);
+    return new CriteriaQueryImpl<>(resultClass, sd, this, sqlPattern);
   }
 
   @Override
   public ProcessorCriteriaQuery<Tuple> createTupleQuery() {
-    return new CriteriaQueryImpl<>(Tuple.class, sd, this);
+    return new CriteriaQueryImpl<>(Tuple.class, sd, this, sqlPattern);
   }
 
   @Override
@@ -445,10 +458,6 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
     return binaryExpression(x, y, PredicateImpl.BinaryExpressionPredicate.Operation.GE);
   }
 
-  public ParameterBuffer getParameter() {
-    return parameter;
-  }
-
   /**
    * Create a predicate for testing whether the first argument is
    * greater than the second.
@@ -538,7 +547,7 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    */
   @Override
   public <T> In<T> in(final Expression<? extends T> expression) {
-    return new PredicateImpl.In<>((Path<? extends T>) expression);
+    return new PredicateImpl.In<>((Path<? extends T>) expression, parameter);
   }
 
   /**
@@ -550,7 +559,7 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
   @Override
   public In<List<Comparable<?>>> in(final List<Path<Comparable<?>>> paths,
       final Subquery<List<Comparable<?>>> subquery) {
-    return new PredicateImpl.In<List<Comparable<?>>>(paths).value(subquery);
+    return new PredicateImpl.In<List<Comparable<?>>>(paths, parameter).value(subquery);
   }
 
   /**
@@ -561,7 +570,7 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    */
   @Override
   public <T> In<T> in(final Path<?> path) {
-    return new PredicateImpl.In<>(path);
+    return new PredicateImpl.In<>(path, parameter);
   }
 
   /**
@@ -724,7 +733,7 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    * @return least expression
    */
   @Override
-  public <X extends Comparable<? super X>> Expression<X> least(@Nonnull final Expression<X> x) {
+  public <X extends Comparable<? super X>> Expression<X> least(@Nonnull final Expression<X> expression) {
     throw new NotImplementedException();
   }
 
@@ -734,8 +743,8 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    * @return length expression
    */
   @Override
-  public Expression<Integer> length(@Nonnull final Expression<String> x) {
-    return new ExpressionImpl.UnaryFunctionalExpression<>(x, SqlStringFunctions.LENGTH);
+  public Expression<Integer> length(@Nonnull final Expression<String> expression) {
+    return new ExpressionImpl.LengthExpression(expression, sqlPattern);
   }
 
   /**
@@ -874,13 +883,14 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    * if found.
    * The first position in a string is denoted by 1. If the
    * string to be located is not found, 0 is returned.
-   * @param x expression for string to be searched
+   * @param expression expression for string to be searched
    * @param pattern expression for string to be located
    * @return expression corresponding to position
    */
   @Override
-  public Expression<Integer> locate(@Nonnull final Expression<String> x, @Nonnull final Expression<String> pattern) {
-    return new ExpressionImpl.LocateExpression(x, pattern, null);
+  public Expression<Integer> locate(@Nonnull final Expression<String> expression,
+      @Nonnull final Expression<String> pattern) {
+    return new ExpressionImpl.LocateExpression(expression, pattern, null, sqlPattern);
   }
 
   /**
@@ -889,15 +899,16 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    * if found.
    * The first position in a string is denoted by 1. If the
    * string to be located is not found, 0 is returned.
-   * @param x expression for string to be searched
+   * @param expression expression for string to be searched
    * @param pattern expression for string to be located
    * @param from expression for position at which to start search
    * @return expression corresponding to position
    */
   @Override
-  public Expression<Integer> locate(@Nonnull final Expression<String> x, @Nonnull final Expression<String> pattern,
+  public Expression<Integer> locate(@Nonnull final Expression<String> expression,
+      @Nonnull final Expression<String> pattern,
       @Nonnull final Expression<Integer> from) {
-    return new ExpressionImpl.LocateExpression(x, pattern, from);
+    return new ExpressionImpl.LocateExpression(expression, pattern, from, sqlPattern);
   }
 
   /**
@@ -906,13 +917,13 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    * if found.
    * The first position in a string is denoted by 1. If the
    * string to be located is not found, 0 is returned.
-   * @param x expression for string to be searched
+   * @param expression expression for string to be searched
    * @param pattern string to be located
    * @return expression corresponding to position
    */
   @Override
-  public Expression<Integer> locate(@Nonnull final Expression<String> x, @Nonnull final String pattern) {
-    return new ExpressionImpl.LocateExpression(x, literal(pattern, x), null);
+  public Expression<Integer> locate(@Nonnull final Expression<String> expression, @Nonnull final String pattern) {
+    return new ExpressionImpl.LocateExpression(expression, literal(pattern, expression), null, sqlPattern);
   }
 
   /**
@@ -921,15 +932,15 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    * if found.
    * The first position in a string is denoted by 1. If the
    * string to be located is not found, 0 is returned.
-   * @param x expression for string to be searched
+   * @param expression expression for string to be searched
    * @param pattern string to be located
    * @param from position at which to start search
    * @return expression corresponding to position
    */
   @Override
-  public Expression<Integer> locate(@Nonnull final Expression<String> x, @Nonnull final String pattern,
+  public Expression<Integer> locate(@Nonnull final Expression<String> expression, @Nonnull final String pattern,
       final int from) {
-    return new ExpressionImpl.LocateExpression(x, literal(pattern), literal(from));
+    return new ExpressionImpl.LocateExpression(expression, literal(pattern), literal(from), sqlPattern);
   }
 
   /**
@@ -1351,7 +1362,7 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    */
   @Override
   public Expression<String> substring(@Nonnull final Expression<String> x, @Nonnull final Expression<Integer> from) {
-    return new ExpressionImpl.SubstringExpression(x, from, null);
+    return new ExpressionImpl.SubstringExpression(x, from, null, sqlPattern);
   }
 
   /**
@@ -1367,7 +1378,7 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
   @Override
   public Expression<String> substring(@Nonnull final Expression<String> x, @Nonnull final Expression<Integer> from,
       @Nonnull final Expression<Integer> len) {
-    return new ExpressionImpl.SubstringExpression(x, from, len);
+    return new ExpressionImpl.SubstringExpression(x, from, len, sqlPattern);
   }
 
   /**
@@ -1381,7 +1392,7 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    */
   @Override
   public Expression<String> substring(@Nonnull final Expression<String> x, @Nonnull final int from) {
-    return new ExpressionImpl.SubstringExpression(x, literal(from), null);
+    return new ExpressionImpl.SubstringExpression(x, literal(from), null, sqlPattern);
   }
 
   /**
@@ -1396,7 +1407,7 @@ class CriteriaBuilderImpl implements ProcessorCriteriaBuilder { // NOSONAR
    */
   @Override
   public Expression<String> substring(final Expression<String> x, final int from, final int len) {
-    return new ExpressionImpl.SubstringExpression(x, literal(from), literal(len));
+    return new ExpressionImpl.SubstringExpression(x, literal(from), literal(len), sqlPattern);
   }
 
   /**

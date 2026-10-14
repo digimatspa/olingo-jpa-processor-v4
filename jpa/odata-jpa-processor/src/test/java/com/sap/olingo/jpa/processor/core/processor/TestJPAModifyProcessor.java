@@ -16,7 +16,6 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 
 import org.apache.olingo.commons.api.data.Entity;
-import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.edm.Edm;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
@@ -31,7 +30,6 @@ import org.apache.olingo.commons.core.edm.primitivetype.EdmString;
 import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataRequest;
 import org.apache.olingo.server.api.ServiceMetadata;
-import org.apache.olingo.server.api.serializer.SerializerException;
 import org.apache.olingo.server.api.serializer.SerializerResult;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriParameter;
@@ -48,14 +46,15 @@ import com.sap.olingo.jpa.metadata.api.JPAEntityManagerFactory;
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.AnnotationProvider;
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.JPAReferences;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.impl.JPADefaultEdmNameBuilder;
 import com.sap.olingo.jpa.processor.core.api.JPAAbstractCUDRequestHandler;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContextAccess;
 import com.sap.olingo.jpa.processor.core.api.JPAODataTransactionFactory;
 import com.sap.olingo.jpa.processor.core.api.JPAODataTransactionFactory.JPAODataTransaction;
 import com.sap.olingo.jpa.processor.core.api.JPAServiceDebugger;
-import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException;
 import com.sap.olingo.jpa.processor.core.modify.JPAConversionHelper;
 import com.sap.olingo.jpa.processor.core.query.EdmBindingTargetInfo;
+import com.sap.olingo.jpa.processor.core.serializer.JPAEntityCollectionExtension;
 import com.sap.olingo.jpa.processor.core.serializer.JPASerializer;
 import com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivision;
 import com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivisionKey;
@@ -63,6 +62,7 @@ import com.sap.olingo.jpa.processor.core.testmodel.DataSourceHelper;
 import com.sap.olingo.jpa.processor.core.testmodel.Organization;
 import com.sap.olingo.jpa.processor.core.testmodel.Person;
 import com.sap.olingo.jpa.processor.core.util.TestBase;
+import com.sap.olingo.jpa.processor.core.util.TestWrapperChecker;
 
 abstract class TestJPAModifyProcessor {
   protected static final String LOCATION_HEADER = "Organization('35')";
@@ -72,7 +72,7 @@ abstract class TestJPAModifyProcessor {
   protected static JPAEdmProvider jpaEdm;
   protected static DataSource ds;
   protected static List<AnnotationProvider> annotationProvider;
-  protected static JPAReferences refrences;
+  protected static JPAReferences references;
 
   @BeforeAll
   public static void setupClass() throws ODataException {
@@ -81,7 +81,8 @@ abstract class TestJPAModifyProcessor {
 
     ds = DataSourceHelper.createDataSource(DataSourceHelper.DB_HSQLDB);
     emf = JPAEntityManagerFactory.getEntityManagerFactory(PUNIT_NAME, ds);
-    jpaEdm = new JPAEdmProvider(PUNIT_NAME, emf.getMetamodel(), pP, TestBase.enumPackages, annotationProvider);
+    jpaEdm = new JPAEdmProvider(emf.getMetamodel(), new TestWrapperChecker(), pP, TestBase.enumPackages,
+        new JPADefaultEdmNameBuilder(PUNIT_NAME), annotationProvider);
 
   }
 
@@ -129,6 +130,7 @@ abstract class TestJPAModifyProcessor {
     when(requestContext.getUriInfo()).thenReturn(uriInfo);
     when(requestContext.getSerializer()).thenReturn(serializer);
     when(requestContext.getTransactionFactory()).thenReturn(factory);
+    when(requestContext.getEtagHelper()).thenReturn(new JPAODataEtagHelperImpl(odata));
     when(uriInfo.getUriResourceParts()).thenReturn(pathParts);
     when(uriEts.getKeyPredicates()).thenReturn(keyPredicates);
     when(uriEts.getEntitySet()).thenReturn(ets);
@@ -141,7 +143,7 @@ abstract class TestJPAModifyProcessor {
   }
 
   protected ODataRequest prepareRepresentationRequest(final JPAAbstractCUDRequestHandler spy)
-      throws ODataJPAProcessorException, SerializerException, ODataException {
+      throws ODataException {
 
     final ODataRequest request = prepareSimpleRequest("return=representation");
 
@@ -167,15 +169,16 @@ abstract class TestJPAModifyProcessor {
     when(edmProperty.getType()).thenReturn(type);
     when(type.toUriLiteral(ArgumentMatchers.any())).thenReturn("35");
 
-    when(serializer.serialize(ArgumentMatchers.eq(request), ArgumentMatchers.any(EntityCollection.class))).thenReturn(
-        serializerResult);
+    when(serializer.serialize(ArgumentMatchers.eq(request), ArgumentMatchers.any(JPAEntityCollectionExtension.class)))
+        .thenReturn(
+            serializerResult);
     when(serializerResult.getContent()).thenReturn(new ByteArrayInputStream("{\"ID\":\"35\"}".getBytes()));
 
     return request;
   }
 
   protected ODataRequest prepareLinkRequest(final JPAAbstractCUDRequestHandler spy)
-      throws ODataJPAProcessorException, SerializerException, ODataException {
+      throws ODataException {
 
     // .../AdministrativeDivisions(DivisionCode='DE60',CodeID='NUTS2',CodePublisher='Eurostat')
     final ODataRequest request = prepareSimpleRequest("return=representation");
@@ -225,22 +228,22 @@ abstract class TestJPAModifyProcessor {
     when(edmProperty.getType()).thenReturn(type);
     when(edmProperty.getMaxLength()).thenReturn(50);
 
-    when(serializer.serialize(ArgumentMatchers.eq(request), ArgumentMatchers.any(EntityCollection.class))).thenReturn(
-        serializerResult);
+    when(serializer.serialize(ArgumentMatchers.eq(request), ArgumentMatchers.any(JPAEntityCollectionExtension.class)))
+        .thenReturn(
+            serializerResult);
     when(serializerResult.getContent()).thenReturn(new ByteArrayInputStream("{\"ParentCodeID\":\"NUTS1\"}".getBytes()));
 
     return request;
 
   }
 
-  protected ODataRequest prepareSimpleRequest() throws ODataException, ODataJPAProcessorException, SerializerException {
+  protected ODataRequest prepareSimpleRequest() throws ODataException {
 
     return prepareSimpleRequest("return=minimal");
   }
 
   @SuppressWarnings("unchecked")
-  protected ODataRequest prepareSimpleRequest(final String content) throws ODataException, ODataJPAProcessorException,
-      SerializerException {
+  protected ODataRequest prepareSimpleRequest(final String content) throws ODataException {
 
     final EntityTransaction transaction = mock(EntityTransaction.class);
     when(em.getTransaction()).thenReturn(transaction);
@@ -260,7 +263,7 @@ abstract class TestJPAModifyProcessor {
   }
 
   protected ODataRequest preparePersonRequest(final JPAAbstractCUDRequestHandler spy)
-      throws ODataJPAProcessorException, SerializerException, ODataException {
+      throws ODataException {
 
     final ODataRequest request = prepareSimpleRequest("return=representation");
 
@@ -286,8 +289,9 @@ abstract class TestJPAModifyProcessor {
     when(edmProperty.getType()).thenReturn(type);
     when(type.toUriLiteral(ArgumentMatchers.any())).thenReturn("35");
 
-    when(serializer.serialize(ArgumentMatchers.eq(request), ArgumentMatchers.any(EntityCollection.class))).thenReturn(
-        serializerResult);
+    when(serializer.serialize(ArgumentMatchers.eq(request), ArgumentMatchers.any(JPAEntityCollectionExtension.class)))
+        .thenReturn(
+            serializerResult);
     when(serializerResult.getContent()).thenReturn(new ByteArrayInputStream("{\"ID\":\"35\"}".getBytes()));
 
     return request;

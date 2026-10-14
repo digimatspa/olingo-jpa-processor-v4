@@ -29,6 +29,7 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEnumerationAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAFunction;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAStructuredType;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAUserGroupRestrictable;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 
 /**
@@ -50,9 +51,11 @@ final class IntermediateSchema extends IntermediateModelElement {
   private IntermediateEntityContainer container;
   private final Reflections reflections;
   private CsdlSchema edmSchema;
+  private final boolean emfIsWrapped;
 
   IntermediateSchema(final JPAEdmNameBuilder nameBuilder, final Metamodel jpaMetamodel, final Reflections reflections,
-      final IntermediateAnnotationInformation annotationInfo) throws ODataJPAModelException {
+      final IntermediateAnnotationInformation annotationInfo, final boolean emfIsWrapped)
+      throws ODataJPAModelException {
 
     super(nameBuilder, nameBuilder.getNamespace(), annotationInfo);
     this.jpaMetamodel = jpaMetamodel;
@@ -62,15 +65,58 @@ final class IntermediateSchema extends IntermediateModelElement {
     this.entityTypeListInternalKey = buildEntityTypeList();
     this.functionListInternalKey = buildFunctionList();
     this.actionListByKey = buildActionList();
+    this.emfIsWrapped = emfIsWrapped;
   }
 
-  public IntermediateEnumerationType getEnumerationType(final Class<?> enumType) {
+  private IntermediateSchema(final IntermediateSchema source, final List<String> userGroups,
+      final boolean hideRestrictedProperties)
+      throws ODataJPAModelException {
+    super(source.nameBuilder, source.nameBuilder.getNamespace(), source.getAnnotationInformation());
+    emfIsWrapped = source.emfIsWrapped;
+    jpaMetamodel = source.jpaMetamodel;
+    reflections = source.reflections;
+    complexTypeListInternalKey = copyRestricted(source.complexTypeListInternalKey, userGroups,
+        hideRestrictedProperties);
+    enumTypeListInternalKey = source.enumTypeListInternalKey;
+    entityTypeListInternalKey = copyRestricted(source.entityTypeListInternalKey, userGroups, hideRestrictedProperties);
+    functionListInternalKey = copyRestricted(source.functionListInternalKey, userGroups, hideRestrictedProperties);
+    actionListByKey = copyRestrictedActions(source.actionListByKey, userGroups, hideRestrictedProperties);
+  }
+
+  private Map<ODataActionKey, IntermediateJavaAction> copyRestrictedActions(
+      final Map<ODataActionKey, IntermediateJavaAction> source, final List<String> userGroups,
+      final boolean hideRestrictedProperties) throws ODataJPAModelException {
+    final Map<ODataActionKey, IntermediateJavaAction> result = new HashMap<>(source.size());
+    for (final var item : source.entrySet()) {
+      if (item.getValue().isAccessibleFor(userGroups)) {
+        result.put(item.getKey(), item.getValue().asUserGroupRestricted(userGroups, hideRestrictedProperties));
+      }
+    }
+    return result;
+  }
+
+  private <T extends IntermediateModelElement> Map<String, T> copyRestricted(final Map<String, T> source,
+      final List<String> userGroups, final boolean hideRestrictedProperties) throws ODataJPAModelException {
+    final Map<String, T> result = new HashMap<>(source.size());
+    for (final var item : source.entrySet()) {
+      if (item.getValue() instanceof final JPAUserGroupRestrictable restrictable) {
+        if (restrictable.isAccessibleFor(userGroups)) {
+          result.put(item.getKey(), item.getValue().asUserGroupRestricted(userGroups, hideRestrictedProperties));
+        }
+      } else {
+        result.put(item.getKey(), item.getValue().asUserGroupRestricted(userGroups, hideRestrictedProperties));
+      }
+    }
+    return result;
+  }
+
+  IntermediateEnumerationType getEnumerationType(final Class<?> enumType) {
     if (enumType.isArray())
       return this.enumTypeListInternalKey.get(enumType.getComponentType().getSimpleName());
     return this.enumTypeListInternalKey.get(enumType.getSimpleName());
   }
 
-  public JPAEnumerationAttribute getEnumerationType(final EdmEnumType type) {
+  JPAEnumerationAttribute getEnumerationType(final EdmEnumType type) {
     for (final Entry<String, IntermediateEnumerationType> enumeration : this.enumTypeListInternalKey.entrySet()) {
       if (enumeration.getValue().getExternalFQN().equals(type.getFullQualifiedName()))
         return enumeration.getValue();
@@ -78,12 +124,19 @@ final class IntermediateSchema extends IntermediateModelElement {
     return null;
   }
 
-  public IntermediateEnumerationType getEnumerationType(final String externalName) {
+  IntermediateEnumerationType getEnumerationType(final String externalName) {
     for (final Entry<String, IntermediateEnumerationType> enumeration : this.enumTypeListInternalKey.entrySet()) {
       if (enumeration.getValue().getExternalName().equals(externalName))
         return enumeration.getValue();
     }
     return null;
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  protected <T extends IntermediateModelElement> T asUserGroupRestricted(final List<String> userGroups,
+      final boolean hideRestrictedProperties) throws ODataJPAModelException {
+    return (T) new IntermediateSchema(this, userGroups, hideRestrictedProperties);
   }
 
   @Override
@@ -225,6 +278,10 @@ final class IntermediateSchema extends IntermediateModelElement {
     this.container = container;
   }
 
+  boolean emfIsWrapped() {
+    return emfIsWrapped;
+  }
+
   private Map<ODataActionKey, IntermediateJavaAction> buildActionList() throws ODataJPAModelException {
     final HashMap<ODataActionKey, IntermediateJavaAction> actionList = new HashMap<>();
     final IntermediateActionFactory factory = new IntermediateActionFactory();
@@ -279,4 +336,5 @@ final class IntermediateSchema extends IntermediateModelElement {
     functionList.putAll(factory.create(nameBuilder, reflections, this));
     return functionList;
   }
+
 }

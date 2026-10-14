@@ -29,6 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import com.sap.olingo.jpa.processor.core.testmodel.AddressDeepProtected;
 import com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivision;
 import com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivisionDescription;
 import com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivisionDescriptionKey;
@@ -48,6 +49,7 @@ import com.sap.olingo.jpa.processor.core.testmodel.CollectionInnerComplex;
 import com.sap.olingo.jpa.processor.core.testmodel.CollectionNestedComplex;
 import com.sap.olingo.jpa.processor.core.testmodel.CollectionPartOfComplex;
 import com.sap.olingo.jpa.processor.core.testmodel.CollectionSecondLevelComplex;
+import com.sap.olingo.jpa.processor.core.testmodel.CollectionWithTwoKey;
 import com.sap.olingo.jpa.processor.core.testmodel.Comment;
 import com.sap.olingo.jpa.processor.core.testmodel.CommunicationData;
 import com.sap.olingo.jpa.processor.core.testmodel.Country;
@@ -62,8 +64,11 @@ import com.sap.olingo.jpa.processor.core.testmodel.InhouseAddressWithThreeProtec
 import com.sap.olingo.jpa.processor.core.testmodel.InstanceRestrictionKey;
 import com.sap.olingo.jpa.processor.core.testmodel.JoinRelationKey;
 import com.sap.olingo.jpa.processor.core.testmodel.MembershipKey;
+import com.sap.olingo.jpa.processor.core.testmodel.NestedComplex;
+import com.sap.olingo.jpa.processor.core.testmodel.NestedComplexKey;
 import com.sap.olingo.jpa.processor.core.testmodel.Organization;
 import com.sap.olingo.jpa.processor.core.testmodel.OrganizationImage;
+import com.sap.olingo.jpa.processor.core.testmodel.Pages;
 import com.sap.olingo.jpa.processor.core.testmodel.Person;
 import com.sap.olingo.jpa.processor.core.testmodel.PersonDeepProtected;
 import com.sap.olingo.jpa.processor.core.testmodel.PersonDeepProtectedHidden;
@@ -88,7 +93,7 @@ class TestStandardMethodsOfTestModel {
   private final int expInt = 10;
   private final Boolean expBoolean = Boolean.TRUE;
   private final BigInteger expBigInt = new BigInteger("10");
-  private final BigDecimal expDecimal = new BigDecimal(1.10);
+  private final BigDecimal expDecimal = BigDecimal.valueOf(1.10);
   private final LocalDate expLocalDate = LocalDate.now();
   private final long expLong = 15l;
   private final byte[] expByteArray = new byte[] { 1, 1, 1, 1 };
@@ -101,6 +106,7 @@ class TestStandardMethodsOfTestModel {
 
   static Stream<Arguments> testModelEntities() {
     return Stream.of(
+        arguments(AddressDeepProtected.class),
         arguments(AdministrativeDivisionDescription.class),
         arguments(AdministrativeDivisionDescriptionKey.class),
         arguments(AdministrativeDivisionKey.class),
@@ -121,6 +127,7 @@ class TestStandardMethodsOfTestModel {
         arguments(CollectionDeep.class),
         arguments(CollectionFirstLevelComplex.class),
         arguments(CollectionSecondLevelComplex.class),
+        arguments(CollectionWithTwoKey.class),
         arguments(Comment.class),
         arguments(Country.class),
         arguments(CountryKey.class),
@@ -133,8 +140,11 @@ class TestStandardMethodsOfTestModel {
         arguments(InstanceRestrictionKey.class),
         arguments(JoinRelationKey.class),
         arguments(MembershipKey.class),
+        arguments(NestedComplex.class),
+        arguments(NestedComplexKey.class),
         arguments(Organization.class),
         arguments(OrganizationImage.class),
+        arguments(Pages.class),
         arguments(Person.class),
         arguments(PersonImage.class),
         arguments(PersonDeepProtected.class),
@@ -190,9 +200,11 @@ class TestStandardMethodsOfTestModel {
         final String getterName = "g" + setter.getName().substring(1);
         assertNotNull(clazz.getMethod(getterName));
         final Method getter = clazz.getMethod(getterName);
+        final var returnType = getter.getReturnType();
         final Class<?> paramType = setter.getParameterTypes()[0];
         final Object exp = getExpected(paramType);
-        if (exp != null) {
+        if (returnType.equals(paramType)
+            && exp != null) {
           setter.invoke(instance, exp);
           if (exp.getClass().isArray())
             if ("byte[]".equals(exp.getClass().getTypeName()))

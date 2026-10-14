@@ -27,6 +27,7 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAServiceDocument;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.processor.cb.ProcessorSelection;
+import com.sap.olingo.jpa.processor.cb.ProcessorSqlPatternProvider;
 import com.sap.olingo.jpa.processor.cb.exceptions.InternalServerError;
 import com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivision;
 import com.sap.olingo.jpa.processor.core.testmodel.Organization;
@@ -34,11 +35,13 @@ import com.sap.olingo.jpa.processor.core.testmodel.Organization;
 class CriteriaQueryImplTest extends BuilderBaseTest {
   private CriteriaQueryImpl<Object> cut;
   private CriteriaBuilder cb;
+  private ProcessorSqlPatternProvider sqlPattern;
 
   @BeforeEach
-  void setup() throws ODataJPAModelException {
-    cb = new CriteriaBuilderImpl(sd, new ParameterBuffer());
-    cut = new CriteriaQueryImpl<>(Object.class, sd, cb);
+  void setup() {
+    sqlPattern = new SqlDefaultPattern();
+    cb = new CriteriaBuilderImpl(sd, sqlPattern);
+    cut = new CriteriaQueryImpl<>(Object.class, sd, cb, sqlPattern);
   }
 
   @Test
@@ -81,9 +84,8 @@ class CriteriaQueryImplTest extends BuilderBaseTest {
   void testResetOrderByWithArray() {
     final Root<?> adminDivision = cut.from(AdministrativeDivision.class);
     final Order[] nullArray = null;
-    CriteriaQuery<Object> act = cut.orderBy(Arrays.asList(cb.desc(adminDivision.get("codeID")), cb.asc(adminDivision
-        .get("divisionCode"))));
-    act = cut.orderBy(nullArray);
+    cut.orderBy(Arrays.asList(cb.desc(adminDivision.get("codeID")), cb.asc(adminDivision.get("divisionCode"))));
+    CriteriaQuery<Object> act = cut.orderBy(nullArray);
     assertNotNull(act.getOrderList());
     assertEquals(0, act.getOrderList().size());
   }
@@ -92,9 +94,8 @@ class CriteriaQueryImplTest extends BuilderBaseTest {
   void testResetOrderByWithList() {
     final Root<?> adminDivision = cut.from(AdministrativeDivision.class);
     final List<Order> nullList = null;
-    CriteriaQuery<Object> act = cut.orderBy(Arrays.asList(cb.desc(adminDivision.get("codeID")), cb.asc(adminDivision
-        .get("divisionCode"))));
-    act = cut.orderBy(nullList);
+    cut.orderBy(Arrays.asList(cb.desc(adminDivision.get("codeID")), cb.asc(adminDivision.get("divisionCode"))));
+    CriteriaQuery<Object> act = cut.orderBy(nullList);
     assertNotNull(act.getOrderList());
     assertEquals(0, act.getOrderList().size());
   }
@@ -142,10 +143,11 @@ class CriteriaQueryImplTest extends BuilderBaseTest {
     cut.groupBy(act.get("name2"));
     cut.multiselect(act.get("aBCClass"), act.get("name2"));
     assertEquals(
-        "SELECT E0.\"ABCClass\" S0, E0.\"NameLine2\" S1 FROM \"OLINGO\".\"BusinessPartner\" E0 "
-            + "WHERE (E0.\"Type\" = ?2) "
-            + "GROUP BY E0.\"NameLine2\" "
-            + "HAVING (COUNT(E0.\"ID\") > ?1)",
+        """
+            SELECT E0."ABCClass" S0, E0."NameLine2" S1 FROM "OLINGO"."BusinessPartner" E0 \
+            WHERE (E0."Type" = ?2) \
+            GROUP BY E0."NameLine2" \
+            HAVING (COUNT(E0."ID") > ?1)""",
         cut.asSQL(statement).toString());
   }
 
@@ -162,7 +164,29 @@ class CriteriaQueryImplTest extends BuilderBaseTest {
   void testFromRethrowsException() throws ODataJPAModelException {
     final JPAServiceDocument serviceDocument = mock(JPAServiceDocument.class);
     when(serviceDocument.getEntity(any(Class.class))).thenThrow(ODataJPAModelException.class);
-    cut = new CriteriaQueryImpl<>(Object.class, serviceDocument, cb);
+    cut = new CriteriaQueryImpl<>(Object.class, serviceDocument, cb, sqlPattern);
     assertThrows(InternalServerError.class, () -> cut.from(AdministrativeDivision.class));
+  }
+
+  @Test
+  void testGetFirstResultWhenNotSet() {
+    assertEquals(0, cut.getFirstResult());
+  }
+
+  @Test
+  void testGetFirstResultReturnsSetValue() {
+    cut.setFirstResult(122);
+    assertEquals(122, cut.getFirstResult());
+  }
+
+  @Test
+  void testGetMaxResultsWhenNotSet() {
+    assertEquals(Integer.MAX_VALUE, cut.getMaxResults());
+  }
+
+  @Test
+  void testGetMaxResultsReturnsSetValue() {
+    cut.setMaxResults(122);
+    assertEquals(122, cut.getMaxResults());
   }
 }

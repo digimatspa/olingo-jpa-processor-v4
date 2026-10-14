@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.olingo.server.api.uri.UriInfoResource;
@@ -41,12 +42,12 @@ class JPACollectionExpandWrapperTest {
     filterOptions = mock(FilterOption.class);
     countOptions = mock(CountOption.class);
     selectOptions = mock(SelectOption.class);
-    cut = new JPACollectionExpandWrapper(jpaEntityType, uriInfo);
 
     when(uriInfo.getFilterOption()).thenReturn(filterOptions);
     when(uriInfo.getCountOption()).thenReturn(countOptions);
     when(uriInfo.getSelectOption()).thenReturn(selectOptions);
     when(uriInfo.getUriResourceParts()).thenReturn(parts);
+    cut = new JPACollectionExpandWrapper(jpaEntityType, uriInfo);
   }
 
   @Test
@@ -82,6 +83,11 @@ class JPACollectionExpandWrapperTest {
   @Test
   void testGetValueForAliasReturnsNull() {
     assertNull(cut.getValueForAlias("Test"));
+  }
+
+  @Test
+  void testGetSkipTokenProvider() {
+    assertEquals(Optional.empty(), cut.getSkipTokenProvider());
   }
 
   @TestFactory

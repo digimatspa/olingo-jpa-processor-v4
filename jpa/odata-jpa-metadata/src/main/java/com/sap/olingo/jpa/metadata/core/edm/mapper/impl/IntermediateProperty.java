@@ -9,23 +9,23 @@ import static com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAMode
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Lob;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.Attribute.PersistentAttributeType;
@@ -41,6 +41,7 @@ import org.apache.olingo.commons.api.edm.geo.SRID;
 import org.apache.olingo.commons.api.edm.provider.CsdlAnnotation;
 import org.apache.olingo.commons.api.edm.provider.CsdlMapping;
 import org.apache.olingo.commons.api.edm.provider.CsdlProperty;
+import org.apache.olingo.commons.api.edm.provider.annotation.CsdlDynamicExpression;
 
 import com.sap.olingo.jpa.metadata.api.JPAHttpHeaderMap;
 import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmGeospatial;
@@ -53,15 +54,13 @@ import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmTransientPropertyCalcu
 import com.sap.olingo.jpa.metadata.core.edm.annotation.EdmVisibleFor;
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.Applicability;
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.ODataAnnotatable;
-import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.ODataNavigationPath;
-import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.ODataPathNotFoundException;
-import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.ODataPropertyPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEdmNameBuilder;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAParameter;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAStructuredType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelInternalException;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.extension.IntermediatePropertyAccess;
 
 /**
@@ -79,7 +78,6 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   private static final Log LOGGER = LogFactory.getLog(IntermediateProperty.class);
   private static final int UPPER_LIMIT_PRECISION_TEMP = 12;
   private static final int LOWER_LIMIT_PRECISION_TEMP = 0;
-  private static final String DB_FIELD_NAME_PATTERN = "\"&1\"";
   protected final jakarta.persistence.metamodel.Attribute<?, ?> jpaAttribute;
   protected final IntermediateSchema schema;
   protected CsdlProperty edmProperty;
@@ -95,19 +93,42 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   private boolean isEnum;
 
   private final Map<String, JPAProtectionInfo> externalProtectedPathNames;
-  private List<String> fieldGroups;
+  private List<String> userGroups;
   protected List<String> requiredAttributes;
   private Constructor<? extends EdmTransientPropertyCalculator<?>> transientCalculatorConstructor;
 
   IntermediateProperty(final JPAEdmNameBuilder nameBuilder, final Attribute<?, ?> jpaAttribute,
-      final IntermediateSchema schema)
-      throws ODataJPAModelException {
+      final IntermediateSchema schema) throws ODataJPAModelException {
     super(nameBuilder, InternalNameBuilder.buildAttributeName(jpaAttribute), schema.getAnnotationInformation());
     this.jpaAttribute = jpaAttribute;
     this.schema = schema;
     this.managedType = jpaAttribute.getDeclaringType();
     this.externalProtectedPathNames = new HashMap<>(1);
     buildProperty(nameBuilder);
+  }
+
+  IntermediateProperty(final IntermediateProperty source, final List<String> userGroups,
+      final boolean hideRestrictedProperties) throws ODataJPAModelException {
+    super(source.nameBuilder, source.getInternalName(), source.getAnnotationInformation(), true);
+    this.jpaAttribute = source.jpaAttribute;
+    this.schema = source.schema;
+    this.managedType = source.managedType;
+    this.externalProtectedPathNames = source.externalProtectedPathNames;
+    this.userGroups = source.userGroups;
+    this.requiredAttributes = source.requiredAttributes;
+    this.transientCalculatorConstructor = source.transientCalculatorConstructor;
+    this.type = source.type == null ? null : ((IntermediateModelElement) source.type).asUserGroupRestricted(userGroups,
+        hideRestrictedProperties);
+    this.valueConverter = source.valueConverter;
+    this.dbFieldName = source.dbFieldName;
+    this.dbType = source.dbType;
+    this.entityType = source.entityType;
+    this.isVersion = source.isVersion;
+    this.searchable = source.searchable;
+    this.conversionRequired = source.conversionRequired;
+    this.isEnum = source.isEnum;
+    setExternalName(source.getExternalName());
+    this.edmProperty = source.edmProperty;
   }
 
   @Override
@@ -197,7 +218,6 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   @Override
   public boolean isEnum() {
     return isEnum;
-
   }
 
   private void determineIsEnum() {
@@ -220,22 +240,6 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   }
 
   @Override
-  public ODataPropertyPath convertStringToPath(final String internalPath) throws ODataPathNotFoundException {
-    return null;
-  }
-
-  @Override
-  public ODataNavigationPath convertStringToNavigationPath(final String internalPath)
-      throws ODataPathNotFoundException {
-    return null;
-  }
-
-  @Override
-  public Annotation javaAnnotation(final String name) {
-    return null;
-  }
-
-  @Override
   public Map<String, Annotation> javaAnnotations(final String packageName) {
     return findJavaAnnotation(packageName, ((AnnotatedElement) this.jpaAttribute.getJavaMember()));
   }
@@ -248,6 +252,7 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
     if (this.jpaAttribute.getJavaMember() instanceof AnnotatedElement) {
       retrieveAnnotations(this, Applicability.PROPERTY);
       determineIgnore();
+      determineIsEnum();
       determineStructuredType();
       determineInternalTypesFromConverter();
       determineDBFieldName();
@@ -256,8 +261,7 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
       determineStreamInfo();
       determineIsVersion();
       determineProtection();
-      determineFieldGroups();
-      determineIsEnum();
+      determineUserGroups();
       checkConsistency();
     }
     postProcessor.processProperty(this, jpaAttribute.getDeclaringType().getJavaType().getCanonicalName());
@@ -269,7 +273,7 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   protected FullQualifiedName determineTypeByPersistenceType(final Enum<?> persistenceType)
       throws ODataJPAModelException {
     if (PersistentAttributeType.BASIC.equals(persistenceType) || PersistenceType.BASIC.equals(persistenceType)) {
-      final IntermediateModelElement odataType = getODataPrimitiveType();
+      final var odataType = getODataPrimitiveType();
       if (odataType == null)
         return getSimpleType();
       else
@@ -302,12 +306,45 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
       setFacet();
       edmProperty.setMapping(createMapper());
       edmProperty.setAnnotations(edmAnnotations);
+
+      if (type != null && type instanceof final IntermediateModelElement element) {
+        element.getEdmItem();
+      }
     }
   }
 
   @Override
   public CsdlAnnotation getAnnotation(final String alias, final String term) throws ODataJPAModelException {
     return filterAnnotation(alias, term);
+  }
+
+  @Override
+  public Object getAnnotationValue(final String alias, final String term, final String property)
+      throws ODataJPAModelException {
+
+    try {
+      return Optional.ofNullable(getAnnotation(alias, term))
+          .map(a -> a.getExpression())
+          .map(expression -> getAnnotationValue(property, expression))
+          .orElse(null);
+    } catch (final ODataJPAModelInternalException e) {
+      throw (ODataJPAModelException) e.getCause();
+    }
+
+  }
+
+  @Override
+  protected Object getAnnotationDynamicValue(final String property, final CsdlDynamicExpression expression)
+      throws ODataJPAModelInternalException {
+    if (expression.isRecord()) {
+      // This may create a problem if the property in question is a record itself. Currently non is supported in
+      // standard
+      final var propertyValue = findAnnotationPropertyValue(property, expression);
+      if (propertyValue.isPresent()) {
+        return getAnnotationValue(property, propertyValue.get());
+      }
+    }
+    return null;
   }
 
   /**
@@ -318,7 +355,7 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
 
   CsdlMapping createMapper() {
     if (!isLob() && !(getConverter() == null || isEnum())) {
-      final CsdlMapping mapping = new CsdlMapping();
+      final var mapping = new CsdlMapping();
       mapping.setInternalName(this.getExternalName());
       mapping.setMappedJavaClass(dbType);
       return mapping;
@@ -331,14 +368,14 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   abstract void determineIsVersion();
 
   void determineProtection() throws ODataJPAModelException {
-    final EdmProtections jpaProtections = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
+    final var jpaProtections = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
         .getAnnotation(EdmProtections.class);
     if (jpaProtections != null) {
       for (final EdmProtectedBy jpaProtectedBy : jpaProtections.value()) {
         determineOneProtection(jpaProtectedBy);
       }
     } else {
-      final EdmProtectedBy jpaProtectedBy = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
+      final var jpaProtectedBy = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
           .getAnnotation(EdmProtectedBy.class);
       if (jpaProtectedBy != null) {
         determineOneProtection(jpaProtectedBy);
@@ -347,7 +384,7 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   }
 
   void determineSearchable() {
-    final EdmSearchable jpaSearchable = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
+    final var jpaSearchable = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
         .getAnnotation(EdmSearchable.class);
     if (jpaSearchable != null)
       searchable = true;
@@ -360,13 +397,6 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   abstract FullQualifiedName determineType() throws ODataJPAModelException;
 
   abstract String getDefaultValue() throws ODataJPAModelException;
-
-  /**
-   * @return
-   */
-  List<String> getGroups() {
-    return fieldGroups;
-  }
 
   IntermediateModelElement getODataPrimitiveType() {
     return schema.getEnumerationType(entityType);
@@ -381,11 +411,11 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   SRID getSRID() {
     SRID result = null;
     if (jpaAttribute.getJavaMember() instanceof AnnotatedElement) {
-      final AnnotatedElement annotatedElement = (AnnotatedElement) jpaAttribute.getJavaMember();
-      final EdmGeospatial spatialDetails = annotatedElement.getAnnotation(EdmGeospatial.class);
+      final var annotatedElement = (AnnotatedElement) jpaAttribute.getJavaMember();
+      final var spatialDetails = annotatedElement.getAnnotation(EdmGeospatial.class);
       if (spatialDetails != null) {
-        final String srid = spatialDetails.srid();
-        final Dimension dimension = spatialDetails.dimension();
+        final var srid = spatialDetails.srid();
+        final var dimension = spatialDetails.dimension();
         if (srid.isEmpty())
           // Set default values external: See https://issues.apache.org/jira/browse/OLINGO-1564
           result = SRID.valueOf(dimension == Dimension.GEOMETRY ? "0" : "4326");
@@ -397,8 +427,26 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
     return result;
   }
 
-  boolean isPartOfGroup() {
-    return !fieldGroups.isEmpty();
+  boolean hasUserGroupRestriction() {
+    return !userGroups.isEmpty();
+  }
+
+  /**
+   * @return
+   */
+  List<String> getUserGroups() {
+    return userGroups;
+  }
+
+  boolean userGroupMatches(final List<String> requesterUserGroups) {
+    if (hasUserGroupRestriction()) {
+      for (final String group : getUserGroups()) {
+        if (requesterUserGroups.contains(group))
+          return true;
+      }
+      return false;
+    }
+    return true;
   }
 
   abstract boolean isStream();
@@ -419,7 +467,7 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
 
   void setFacet() throws ODataJPAModelException {
     if (jpaAttribute.getJavaMember() instanceof AnnotatedElement) {
-      final Column jpaColumn = ((AnnotatedElement) jpaAttribute.getJavaMember()).getAnnotation(Column.class);
+      final var jpaColumn = ((AnnotatedElement) jpaAttribute.getJavaMember()).getAnnotation(Column.class);
       if (jpaColumn != null) {
         edmProperty.setNullable(jpaColumn.nullable());
         edmProperty.setSrid(getSRID());
@@ -504,8 +552,8 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
    */
   private String convertPath(final String internalPath) {
 
-    final String[] pathSegments = internalPath.split(JPAPath.PATH_SEPARATOR);
-    final StringBuilder externalPath = new StringBuilder();
+    final var pathSegments = internalPath.split(JPAPath.PATH_SEPARATOR);
+    final var externalPath = new StringBuilder();
     for (final String segment : pathSegments) {
       externalPath.append(nameBuilder.buildPropertyName(segment));
       externalPath.append(JPAPath.PATH_SEPARATOR);
@@ -543,24 +591,21 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
   }
 
   private void determineDBFieldName() {
-    final Column jpaColumnDetails = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
+    final var jpaColumnDetails = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
         .getAnnotation(Column.class);
     if (jpaColumnDetails != null) {
-      // TODO allow default name
       dbFieldName = jpaColumnDetails.name();
       if (dbFieldName.isEmpty()) {
-        final StringBuilder stringBuilder = new StringBuilder(DB_FIELD_NAME_PATTERN);
-        stringBuilder.replace(1, 3, internalName);
-        dbFieldName = stringBuilder.toString();
+        dbFieldName = nameBuilder.buildColumnName(internalName);
       }
     } else {
       // Hibernate problem: Hibernate tested with 5.6.7 did not provide Column annotation
       // for @Id attributes. Try another way to get the information
       try {
         if (jpaAttribute.getDeclaringType() != null) {
-          final Field declaringClass = jpaAttribute.getDeclaringType().getJavaType().getDeclaredField(jpaAttribute
+          final var declaringClass = jpaAttribute.getDeclaringType().getJavaType().getDeclaredField(jpaAttribute
               .getName());
-          final Column jpaColumn = ((AnnotatedElement) declaringClass).getAnnotation(Column.class);
+          final var jpaColumn = declaringClass.getAnnotation(Column.class);
           if (jpaColumn != null)
             dbFieldName = jpaColumn.name();
         }
@@ -570,23 +615,23 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
       }
     }
     if (dbFieldName == null || dbFieldName.isEmpty())
-      dbFieldName = internalName;
+      dbFieldName = nameBuilder.buildColumnName(internalName);
   }
 
   /**
    *
    */
-  private void determineFieldGroups() {
-    final EdmVisibleFor jpaFieldGroups = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
+  private void determineUserGroups() {
+    final var jpaFieldGroups = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
         .getAnnotation(EdmVisibleFor.class);
     if (jpaFieldGroups != null)
-      fieldGroups = Arrays.stream(jpaFieldGroups.value()).toList();
+      userGroups = Arrays.stream(jpaFieldGroups.value()).toList();
     else
-      fieldGroups = new ArrayList<>(0);
+      userGroups = new ArrayList<>(0);
   }
 
   private void determineIgnore() {
-    final EdmIgnore jpaIgnore = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
+    final var jpaIgnore = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
         .getAnnotation(EdmIgnore.class);
     if (jpaIgnore != null) {
       this.setIgnore(true);
@@ -595,12 +640,12 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
 
   @SuppressWarnings("unchecked")
   private void determineInternalTypesFromConverter() throws ODataJPAModelException {
-    final Convert jpaConverter = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
+    final var jpaConverter = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
         .getAnnotation(Convert.class);
     if (jpaConverter != null) {
       try {
-        final Type[] converterType = jpaConverter.converter().getGenericInterfaces();
-        final Type[] types = ((ParameterizedType) converterType[0]).getActualTypeArguments();
+        final var converterType = jpaConverter.converter().getGenericInterfaces();
+        final var types = ((ParameterizedType) converterType[0]).getActualTypeArguments();
         entityType = (Class<?>) types[0];
         dbType = (Class<?>) types[1];
         conversionRequired = !JPATypeConverter.isSupportedByOlingo(entityType);
@@ -610,20 +655,34 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
         throw new ODataJPAModelException(
             ODataJPAModelException.MessageKeys.TYPE_MAPPER_COULD_NOT_INSTANTIATED, e);
       }
+    } else {
+      final var enumerated = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
+          .getAnnotation(Enumerated.class);
+      if (enumerated != null) {
+        switch (enumerated.value()) {
+          case ORDINAL -> dbType = Integer.class;
+          case STRING -> dbType = String.class;
+          default -> throw new IllegalArgumentException("Unexpected value: " + enumerated.value());
+        }
+        conversionRequired = false;
+      } else if (isEnum) {
+        dbType = Integer.class;
+        conversionRequired = false;
+      }
     }
   }
 
   private void determineOneProtection(final EdmProtectedBy jpaProtectedBy) throws ODataJPAModelException {
 
     List<String> externalNames;
-    final String protectionClaimName = jpaProtectedBy.name();
+    final var protectionClaimName = jpaProtectedBy.name();
     if (externalProtectedPathNames.containsKey(protectionClaimName))
       externalNames = externalProtectedPathNames.get(protectionClaimName).getPath();
     else
       externalNames = new ArrayList<>(2);
     if (jpaAttribute.getPersistentAttributeType() == Attribute.PersistentAttributeType.EMBEDDED) {
-      final String internalProtectedPath = jpaProtectedBy.path();
-      if (internalProtectedPath.length() == 0) {
+      final var internalProtectedPath = jpaProtectedBy.path();
+      if (internalProtectedPath.isEmpty()) {
         throw new ODataJPAModelException(COMPLEX_PROPERTY_MISSING_PROTECTION_PATH, this.managedType.getJavaType()
             .getCanonicalName(), this.internalName);
       }
@@ -645,7 +704,7 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
    *
    */
   void determineTransient() throws ODataJPAModelException {
-    final EdmTransient jpaTransient = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
+    final var jpaTransient = ((AnnotatedElement) this.jpaAttribute.getJavaMember())
         .getAnnotation(EdmTransient.class);
     if (jpaTransient != null) {
       if (isKey())
@@ -658,7 +717,7 @@ abstract class IntermediateProperty extends IntermediateModelElement implements 
 
   private boolean isLob() {
     if (jpaAttribute != null && jpaAttribute.getJavaMember() instanceof AnnotatedElement) {
-      final AnnotatedElement annotatedElement = (AnnotatedElement) jpaAttribute.getJavaMember();
+      final var annotatedElement = (AnnotatedElement) jpaAttribute.getJavaMember();
       if (annotatedElement != null && annotatedElement.getAnnotation(Lob.class) != null) {
         return true;
       }

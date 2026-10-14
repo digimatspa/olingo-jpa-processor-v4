@@ -32,7 +32,7 @@ import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAStructuredType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException;
 
-public abstract class JPAConversionHelperTest {
+abstract class JPAConversionHelperTest {
 
   protected JPAConversionHelper cut;
   protected EdmEntitySet edmEntitySet;
@@ -45,19 +45,18 @@ public abstract class JPAConversionHelperTest {
   }
 
   @Test
-  public abstract void testConvertCompoundKeyToLocation() throws ODataJPAProcessorException, SerializerException,
+  abstract void testConvertCompoundKeyToLocation() throws ODataJPAProcessorException, SerializerException,
       ODataJPAModelException;
 
   @Test
-  public abstract void testConvertEmbeddedIdToLocation() throws ODataJPAProcessorException, SerializerException,
+  abstract void testConvertEmbeddedIdToLocation() throws ODataJPAProcessorException, SerializerException,
       ODataJPAModelException;
 
   @Test
-  public abstract void testConvertSimpleKeyToLocation() throws ODataJPAProcessorException, SerializerException,
+  abstract void testConvertSimpleKeyToLocation() throws ODataJPAProcessorException, SerializerException,
       ODataJPAModelException;
 
-  protected void prepareConvertCompoundKeyToLocation() throws ODataJPAModelException,
-      SerializerException, ODataJPAProcessorException {
+  protected void prepareConvertCompoundKeyToLocation() throws ODataJPAModelException {
 
     final List<JPAPath> keyPath = new ArrayList<>();
 
@@ -71,7 +70,7 @@ public abstract class JPAConversionHelperTest {
     addKeyAttribute(keyPath, "RoleCategory", "roleCategory");
 
     odata = mock(OData.class);
-    UriHelper uriHelper = new UriHelperSpy(UriHelperSpy.COMPOUND_KEY);
+    final UriHelper uriHelper = new UriHelperSpy(UriHelperSpy.COMPOUND_KEY);
     when(odata.createUriHelper()).thenReturn(uriHelper);
   }
 
@@ -87,7 +86,7 @@ public abstract class JPAConversionHelperTest {
     addKeyAttribute(keyPath, "ID", "iD");
 
     odata = mock(OData.class);
-    UriHelper uriHelper = new UriHelperSpy(UriHelperSpy.SINGLE);
+    final UriHelper uriHelper = new UriHelperSpy(UriHelperSpy.SINGLE);
     when(odata.createUriHelper()).thenReturn(uriHelper);
   }
 
@@ -111,16 +110,16 @@ public abstract class JPAConversionHelperTest {
     edmEntitySet = mock(EdmEntitySet.class);
     et = mock(JPAEntityType.class);
     when(et.getKeyPath()).thenReturn(keyPath);
-    JPAPath key = mock(JPAPath.class);
+    final JPAPath key = mock(JPAPath.class);
     keyPath.add(key);
-    JPAAttribute keyAttribute = mock(JPAAttribute.class);
+    final JPAAttribute keyAttribute = mock(JPAAttribute.class);
     when(keyAttribute.getExternalName()).thenReturn("Key");
     when(keyAttribute.getInternalName()).thenReturn("key");
     when(keyAttribute.isComplex()).thenReturn(true);
     when(keyAttribute.isKey()).thenReturn(true);
     when(key.getLeaf()).thenReturn(keyAttribute);
 
-    JPAStructuredType st = mock(JPAStructuredType.class);
+    final JPAStructuredType st = mock(JPAStructuredType.class);
     when(keyAttribute.getStructuredType()).thenReturn(st);
     keyPath = new ArrayList<>();
     when(st.getPathList()).thenReturn(keyPath);
@@ -131,7 +130,7 @@ public abstract class JPAConversionHelperTest {
     addKeyAttribute(keyPath, "Language", "language");
 
     odata = mock(OData.class);
-    UriHelper uriHelper = new UriHelperSpy(UriHelperSpy.EMBEDDED_ID);
+    final UriHelper uriHelper = new UriHelperSpy(UriHelperSpy.EMBEDDED_ID);
     when(odata.createUriHelper()).thenReturn(uriHelper);
 
   }
@@ -142,19 +141,18 @@ public abstract class JPAConversionHelperTest {
     public static final String SINGLE = "SingleID";
     private final String mode;
 
-    public UriHelperSpy(String mode) {
+    public UriHelperSpy(final String mode) {
       this.mode = mode;
     }
 
     @Override
-    public String buildCanonicalURL(EdmEntitySet edmEntitySet, Entity entity) throws SerializerException {
+    public String buildCanonicalURL(final EdmEntitySet edmEntitySet, final Entity entity) throws SerializerException {
       if (mode.equals(EMBEDDED_ID)) {
         assertEquals(4, entity.getProperties().size());
         int found = 0;
         for (final Property property : entity.getProperties()) {
-          if (property.getName().equals("DivisionCode") && property.getValue().equals("BE1"))
-            found++;
-          else if (property.getName().equals("Language") && property.getValue().equals("fr"))
+          if (property.getName().equals("DivisionCode") && property.getValue().equals("BE1")
+              || property.getName().equals("Language") && property.getValue().equals("fr"))
             found++;
         }
         assertEquals(2, found, "Not all key attributes found");
@@ -163,9 +161,8 @@ public abstract class JPAConversionHelperTest {
         assertEquals(2, entity.getProperties().size());
         int found = 0;
         for (final Property property : entity.getProperties()) {
-          if (property.getName().equals("BusinessPartnerID") && property.getValue().equals("35"))
-            found++;
-          else if (property.getName().equals("RoleCategory") && property.getValue().equals("A"))
+          if (property.getName().equals("BusinessPartnerID") && property.getValue().equals("35")
+              || property.getName().equals("RoleCategory") && property.getValue().equals("A"))
             found++;
         }
         assertEquals(2, found, "Not all key attributes found");
@@ -181,26 +178,26 @@ public abstract class JPAConversionHelperTest {
     }
 
     @Override
-    public String buildContextURLKeyPredicate(List<UriParameter> keys) throws SerializerException {
+    public String buildContextURLKeyPredicate(final List<UriParameter> keys) throws SerializerException {
       fail();
       return null;
     }
 
     @Override
-    public String buildContextURLSelectList(EdmStructuredType type, ExpandOption expand, SelectOption select)
+    public String buildContextURLSelectList(final EdmStructuredType type, final ExpandOption expand, final SelectOption select)
         throws SerializerException {
       fail();
       return null;
     }
 
     @Override
-    public String buildKeyPredicate(EdmEntityType edmEntityType, Entity entity) throws SerializerException {
+    public String buildKeyPredicate(final EdmEntityType edmEntityType, final Entity entity) throws SerializerException {
       fail();
       return null;
     }
 
     @Override
-    public UriResourceEntitySet parseEntityId(Edm edm, String entityId, String rawServiceRoot)
+    public UriResourceEntitySet parseEntityId(final Edm edm, final String entityId, final String rawServiceRoot)
         throws DeserializerException {
       fail();
       return null;

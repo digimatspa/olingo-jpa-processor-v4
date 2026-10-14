@@ -1,5 +1,6 @@
 package com.sap.olingo.jpa.processor.core.processor;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -17,9 +18,9 @@ class JPAEmptyDebuggerTest {
   }
 
   @Test
-  void testMeasurementCreated() throws Exception {
+  void testMeasurementCreated() {
     try (JPARuntimeMeasurement measurement = cut.newMeasurement(cut, "firstTest")) {
-
+      assertEquals(0L, measurement.getMemoryConsumption());
     }
     assertTrue(cut.getRuntimeInformation().isEmpty());
   }

@@ -51,7 +51,9 @@ class CollectionJoinImpl<Z, X> extends AbstractJoinImp<Z, X> {
     return (JPAEntityType) Optional.ofNullable(((JPACollectionAttribute) path.getLeaf())
         .asAssociation()
         .getTargetType())
-        .orElse(parent.st);
+        .orElseThrow(() -> new IllegalStateException("Entity type for collection attribute '&1' of '&2' not found"
+            .replace("&1", path.getLeaf().getInternalName())
+            .replace("&2", parent.st.getInternalName())));
   }
 
   @Override
@@ -70,7 +72,7 @@ class CollectionJoinImpl<Z, X> extends AbstractJoinImp<Z, X> {
       statement.append(" ON ");
       return ((SqlConvertible) on).asSQL(statement);
     } catch (final ODataJPAModelException e) {
-      throw new IllegalStateException("Target DB table of collection attribute &1 of &2"
+      throw new IllegalStateException("Target DB table of collection attribute '&1' of '&2'"
           .replace("&1", attribute.getInternalName())
           .replace("&2", st.getInternalName()), e);
     }
@@ -82,8 +84,11 @@ class CollectionJoinImpl<Z, X> extends AbstractJoinImp<Z, X> {
     try {
       if (!attribute.isComplex()) {
         final JPAStructuredType source = attribute.asAssociation().getSourceType();
-        pathList.add(new PathImpl<>(source.getPath(attribute.asAssociation().getAlias()),
-            parent, st, tableAlias));
+        final var associationPath = source.getPath(attribute.asAssociation().getAlias());
+        if (associationPath != null)
+          pathList.add(new PathImpl<>(associationPath, parent, st, tableAlias));
+        else
+          throw new IllegalStateException();
       } else {
         final JPAStructuredType source = attribute.getStructuredType();
         for (final JPAPath p : source.getPathList()) {
@@ -139,10 +144,8 @@ class CollectionJoinImpl<Z, X> extends AbstractJoinImp<Z, X> {
 
   @Override
   public boolean equals(final Object object) {
-    if (this == object) return true;
-    if (!super.equals(object)) return false;
-    if (!(object instanceof CollectionJoinImpl)) return false;
-    final CollectionJoinImpl<?, ?> other = (CollectionJoinImpl<?, ?>) object;
-    return Objects.equals(attribute, other.attribute);
+    if (object instanceof final CollectionJoinImpl other)// NOSONAR
+      return Objects.equals(attribute, other.attribute);
+    return false;
   }
 }

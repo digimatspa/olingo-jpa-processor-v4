@@ -19,11 +19,14 @@ import jakarta.persistence.metamodel.MapAttribute;
 import jakarta.persistence.metamodel.PluralAttribute;
 import jakarta.persistence.metamodel.SingularAttribute;
 
+import org.apache.commons.logging.LogFactory;
+
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAttribute;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAEntityType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAPath;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAStructuredType;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
+import com.sap.olingo.jpa.processor.cb.exceptions.InternalServerError;
 import com.sap.olingo.jpa.processor.cb.exceptions.NotImplementedException;
 
 /**
@@ -54,13 +57,15 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
     this.path = Objects.requireNonNull(path);
     this.parent = Objects.requireNonNull(parent);
     this.st = type;
-    this.tableAlias = Optional.ofNullable(tableAlias.orElseGet(this::tableAliasFromParent));
+    this.tableAlias = Optional.ofNullable(tableAliasFromParent(tableAlias));
+    if (st == null)
+      LogFactory.getLog(getClass()).info("Type not provided for " + path);
   }
 
   @Override
   public StringBuilder asSQL(final StringBuilder statement) {
-    tableAlias.ifPresent(p -> {
-      statement.append(p);
+    tableAlias.ifPresent(alias -> {
+      statement.append(alias);
       statement.append(DOT);
     });
     path.ifPresent(p -> statement.append(p.getDBFieldName()));
@@ -147,28 +152,57 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
       } else {
         source = st;
       }
-      final JPAAttribute a = source.getDeclaredAttribute(attributeName)
+      final JPAAttribute attribute = source.getDeclaredAttribute(attributeName)
           .orElseThrow(() -> new IllegalArgumentException("'" + attributeName + "' not found at " + st
               .getInternalName()));
       if (this.path.isPresent()) {
         if (isKeyPath(path.get())) {
-          return new PathImpl<>(st.getPath(a.getExternalName()), Optional.of(this), st, tableAlias);
+          return createPathForKeyAttribute(attribute);
         }
-        final StringBuilder pathDescription = new StringBuilder(path.get().getAlias()).append(JPAPath.PATH_SEPARATOR)
-            .append(a.getExternalName());
-        return new PathImpl<>(st.getPath(pathDescription.toString(), false), Optional.of(this), st, tableAlias);
+        return createPathForDescriptionAttribute(attribute);
       } else {
-        return new PathImpl<>(st.getPath(a.getExternalName(), false), Optional.of(this), st, tableAlias);
+        return createPathForAttribute(attribute);
       }
     } catch (final ODataJPAModelException e) {
       throw new IllegalArgumentException("'" + attributeName + "' not found", e);
     }
   }
 
-  private boolean isKeyPath(final JPAPath jpaPath) throws ODataJPAModelException {
-    return st.getKeyPath()
-        .stream()
-        .anyMatch(keyPath -> keyPath.getAlias().equals(jpaPath.getAlias()));
+  private <Y> Path<Y> createPathForDescriptionAttribute(final JPAAttribute attribute) throws ODataJPAModelException {
+    final StringBuilder pathDescription = new StringBuilder(path.get().getAlias()).append(JPAPath.PATH_SEPARATOR)
+        .append(attribute.getExternalName());
+    final var jpaPath = st.getPath(pathDescription.toString(), false);
+    if (jpaPath != null)
+      return new PathImpl<>(jpaPath, Optional.of(this), st, tableAlias);
+    else
+      throw new IllegalStateException();
+  }
+
+  private <Y> Path<Y> createPathForKeyAttribute(final JPAAttribute attribute) throws ODataJPAModelException {
+    final var jpaPath = st.getPath(attribute.getExternalName());
+    if (jpaPath != null)
+      return new PathImpl<>(jpaPath, Optional.of(this), st, tableAlias);
+    else
+      throw new IllegalStateException();
+  }
+
+  private <Y> Path<Y> createPathForAttribute(final JPAAttribute attribute) throws ODataJPAModelException {
+    final var jpaPath = st.getPath(attribute.getExternalName(), false);
+    if (jpaPath != null)
+      return new PathImpl<>(jpaPath, Optional.of(this), st, tableAlias);
+    else
+      throw new IllegalStateException();
+  }
+
+  boolean isKeyPath(final JPAPath jpaPath) {
+
+    try {
+      return st.getKeyPath()
+          .stream()
+          .anyMatch(keyPath -> keyPath.getAlias().equals(jpaPath.getAlias()));
+    } catch (ODataJPAModelException e) {
+      throw new InternalServerError(e);
+    }
   }
 
   /**
@@ -209,10 +243,15 @@ class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
     return Arrays.asList(path.orElseThrow(IllegalStateException::new));
   }
 
-  private String tableAliasFromParent() {
-    if (parent.isPresent())
-      return parent.get().tableAlias.orElse(null);
-    return null;
+  private String tableAliasFromParent(Optional<String> alias) {
+    if (parent.isPresent()) {
+      if (path.isPresent() && parent.get() instanceof FromImpl<?, ?> from) {
+        return from.getAlias(path.get()).orElse(alias.orElse(null));
+      } else {
+        return parent.get().tableAlias.orElse(alias.orElse(null));
+      }
+    }
+    return alias.orElse(null);
   }
 
   @SuppressWarnings("unchecked")

@@ -45,7 +45,7 @@ import com.sap.olingo.jpa.metadata.api.JPAEntityManagerFactory;
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.AnnotationProvider;
 import com.sap.olingo.jpa.metadata.core.edm.extension.vocabularies.JPAReferences;
 import com.sap.olingo.jpa.metadata.core.edm.mapper.api.JPAAssociationPath;
-import com.sap.olingo.jpa.metadata.core.edm.mapper.exception.ODataJPAModelException;
+import com.sap.olingo.jpa.metadata.core.edm.mapper.impl.JPADefaultEdmNameBuilder;
 import com.sap.olingo.jpa.processor.core.api.JPAODataRequestContextAccess;
 import com.sap.olingo.jpa.processor.core.exception.ODataJPAProcessorException;
 import com.sap.olingo.jpa.processor.core.modify.JPAConversionHelper;
@@ -53,6 +53,7 @@ import com.sap.olingo.jpa.processor.core.query.EdmBindingTargetInfo;
 import com.sap.olingo.jpa.processor.core.serializer.JPASerializer;
 import com.sap.olingo.jpa.processor.core.testmodel.DataSourceHelper;
 import com.sap.olingo.jpa.processor.core.util.TestBase;
+import com.sap.olingo.jpa.processor.core.util.TestWrapperChecker;
 
 class TestCreateRequestEntity {
   protected static final String ENTITY_SET_NAME = "AdministrativeDivisions";
@@ -66,16 +67,15 @@ class TestCreateRequestEntity {
   protected static EdmBindingTargetInfo targetInfo;
 
   @BeforeAll
-  public static void setupClass() throws ODataException {
+  static void setupClass() throws ODataException {
     final JPAEdmMetadataPostProcessor postProcessor = mock(JPAEdmMetadataPostProcessor.class);
     targetInfo = mock(EdmBindingTargetInfo.class);
     annotationProvider = new ArrayList<>();
 
     dataSource = DataSourceHelper.createDataSource(DataSourceHelper.DB_HSQLDB);
     emf = JPAEntityManagerFactory.getEntityManagerFactory(PUNIT_NAME, dataSource);
-    jpaEdm = new JPAEdmProvider(PUNIT_NAME, emf.getMetamodel(), postProcessor, TestBase.enumPackages,
-        annotationProvider);
-
+    jpaEdm = new JPAEdmProvider(emf.getMetamodel(), new TestWrapperChecker(), postProcessor, TestBase.enumPackages,
+        new JPADefaultEdmNameBuilder(PUNIT_NAME), annotationProvider);
   }
 
   private OData odata;
@@ -128,7 +128,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateDataAndEtCreated() throws ODataJPAModelException, ODataException {
+  void testCreateDataAndEtCreated() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -139,7 +139,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateEtName() throws ODataJPAModelException, ODataException {
+  void testCreateEtName() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -149,7 +149,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateDataHasProperty() throws ODataJPAModelException, ODataException {
+  void testCreateDataHasProperty() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -160,7 +160,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateEmptyRelatedEntities() throws ODataJPAModelException, ODataException {
+  void testCreateEmptyRelatedEntities() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -171,7 +171,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateEmptyRelationLinks() throws ODataJPAModelException, ODataException {
+  void testCreateEmptyRelationLinks() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -182,7 +182,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateDeepOneChildResultContainsEntityLink() throws ODataJPAModelException, ODataException {
+  void testCreateDeepOneChildResultContainsEntityLink() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -198,7 +198,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateDeepOneChildResultContainsEntityLinkSize() throws ODataJPAModelException, ODataException {
+  void testCreateDeepOneChildResultContainsEntityLinkSize() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -213,7 +213,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateDeepOneChildResultContainsEntityLinkEntityType() throws ODataJPAModelException, ODataException {
+  void testCreateDeepOneChildResultContainsEntityLinkEntityType() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -231,7 +231,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateDeepOneChildResultContainsEntityLinkData() throws ODataJPAModelException, ODataException {
+  void testCreateDeepOneChildResultContainsEntityLinkData() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -251,7 +251,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateDeepTwoChildResultContainsEntityLinkSize() throws ODataJPAModelException, ODataException {
+  void testCreateDeepTwoChildResultContainsEntityLinkSize() throws ODataException {
     final List<Property> properties = createProperties();
     createODataEntity(properties);
 
@@ -354,7 +354,7 @@ class TestCreateRequestEntity {
   }
 
   @Test
-  void testCreateDeepOneChildViaComplex() throws ODataJPAModelException, ODataException {
+  void testCreateDeepOneChildViaComplex() throws ODataException {
     final List<Property> properties = new ArrayList<>();
     final List<Property> inlineProperties = new ArrayList<>();
     final Entity inlineEntity = mock(Entity.class);

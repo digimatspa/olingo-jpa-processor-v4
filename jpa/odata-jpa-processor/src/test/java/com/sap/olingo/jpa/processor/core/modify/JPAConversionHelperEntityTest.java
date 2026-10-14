@@ -13,47 +13,47 @@ import com.sap.olingo.jpa.processor.core.testmodel.AdministrativeDivisionDescrip
 import com.sap.olingo.jpa.processor.core.testmodel.BusinessPartnerRole;
 import com.sap.olingo.jpa.processor.core.testmodel.Organization;
 
-public class JPAConversionHelperEntityTest extends JPAConversionHelperTest {
+class JPAConversionHelperEntityTest extends JPAConversionHelperTest {
 
   @BeforeEach
-  public void setUp() throws Exception {
+  void setUp() {
     cut = new JPAConversionHelper();
   }
 
   @Override
   @Test
-  public void testConvertSimpleKeyToLocation() throws ODataJPAProcessorException, SerializerException,
+  void testConvertSimpleKeyToLocation() throws ODataJPAProcessorException, SerializerException,
       ODataJPAModelException {
 
-    Organization newPOJO = new Organization();
+    final Organization newPOJO = new Organization();
     newPOJO.setID("35");
 
     prepareConvertSimpleKeyToLocation();
-    String act = cut.convertKeyToLocal(odata, request, edmEntitySet, et, newPOJO);
+    final String act = cut.convertKeyToLocal(odata, request, edmEntitySet, et, newPOJO);
     assertEquals("localhost.test/Organisation('35')", act);
   }
 
   @Override
   @Test
-  public void testConvertCompoundKeyToLocation() throws ODataJPAProcessorException, SerializerException,
+  void testConvertCompoundKeyToLocation() throws ODataJPAProcessorException, SerializerException,
       ODataJPAModelException {
 
-    BusinessPartnerRole newPOJO = new BusinessPartnerRole();
+    final BusinessPartnerRole newPOJO = new BusinessPartnerRole();
     newPOJO.setBusinessPartnerID("35");
     newPOJO.setRoleCategory("A");
 
     prepareConvertCompoundKeyToLocation();
-    String act = cut.convertKeyToLocal(odata, request, edmEntitySet, et, newPOJO);
+    final String act = cut.convertKeyToLocal(odata, request, edmEntitySet, et, newPOJO);
     assertEquals("localhost.test/BusinessPartnerRoles(BusinessPartnerID='35',RoleCategory='A')", act);
   }
 
   @Override
   @Test
-  public void testConvertEmbeddedIdToLocation() throws ODataJPAProcessorException, SerializerException,
+  void testConvertEmbeddedIdToLocation() throws ODataJPAProcessorException, SerializerException,
       ODataJPAModelException {
 
-    AdministrativeDivisionDescription newPOJO = new AdministrativeDivisionDescription();
-    AdministrativeDivisionDescriptionKey primaryKey = new AdministrativeDivisionDescriptionKey();
+    final AdministrativeDivisionDescription newPOJO = new AdministrativeDivisionDescription();
+    final AdministrativeDivisionDescriptionKey primaryKey = new AdministrativeDivisionDescriptionKey();
     primaryKey.setCodeID("NUTS1");
     primaryKey.setCodePublisher("Eurostat");
     primaryKey.setDivisionCode("BE1");
@@ -62,7 +62,7 @@ public class JPAConversionHelperEntityTest extends JPAConversionHelperTest {
 
     prepareConvertEmbeddedIdToLocation();
 
-    String act = cut.convertKeyToLocal(odata, request, edmEntitySet, et, newPOJO);
+    final String act = cut.convertKeyToLocal(odata, request, edmEntitySet, et, newPOJO);
     assertEquals(
         "localhost.test/AdministrativeDivisionDescriptions(DivisionCode='BE1',CodeID='NUTS1',CodePublisher='Eurostat',Language='fr')",
         act);

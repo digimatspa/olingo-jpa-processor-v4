@@ -88,6 +88,13 @@ insert into "BusinessPartnerRole" values ('99',  'X', null);
 insert into "BusinessPartnerRole" values ('99',  'Z', null);
 insert into "BusinessPartnerRole" values ('97',  'Y', null);
 
+CREATE TABLE "Union" ( 
+    "MemberId" VARCHAR(32) NOT NULL ,
+    "UnionName" VARCHAR(100) NOT NULL, 
+     PRIMARY KEY ("MemberId"));
+insert into "Union" values ('99',  'Union A');
+insert into "Union" values ('97',  'Union B');
+
 CREATE TABLE "JoinPartnerRoleRelation"(
 	"SourceID" VARCHAR(32) NOT NULL,
 	"TargetID" VARCHAR(10) NOT NULL, 
@@ -435,7 +442,7 @@ CREATE TABLE "AdministrativeDivision"(
 	"ParentCodeID" VARCHAR(10),
 	"ParentDivisionCode" VARCHAR(10),
 	"AlternativeCode" VARCHAR(10),
-	"Area" int,  --DECIMAL(31,0),
+	"Area" BIGINT,  --DECIMAL(31,0),
 	"Population" BIGINT,
 	PRIMARY KEY ("CodePublisher", "CodeID", "DivisionCode"));
 	
@@ -746,7 +753,7 @@ insert into "NestedComplex" values('501',1, 1, 1, 1);
 insert into "NestedComplex" values('501',3, 1, 1, 1);   
 insert into "NestedComplex" values('503',1, 4, 5, 6);   
 insert into "NestedComplex" values('504',1, 1, 3, 6);   
-   
+insert into "NestedComplex" values('504',3, 1, 1, 7);     
 
 CREATE TABLE "CollectionsDeep" (
 	"ID" VARCHAR(32) NOT NULL ,
@@ -773,12 +780,13 @@ insert into "SupportRelationship" values (3,'2','97');
 CREATE TABLE "Team" (
 	"TeamKey" VARCHAR(32) NOT NULL ,
 	"Name" VARCHAR(100),
+	"Active" VARCHAR(10),
 	 PRIMARY KEY ("TeamKey"));	
 	 
-insert into "Team" values ('A', 'Team Java');
-insert into "Team" values ('B', 'Team Scala');
-insert into "Team" values ('C', 'Team Phyton');
-insert into "Team" values ('D', 'Team Go');	 
+insert into "Team" values ('A', 'Team Java', 'true');
+insert into "Team" values ('B', 'Team Scala', 'false');
+insert into "Team" values ('C', 'Team Phyton', 'false');
+insert into "Team" values ('D', 'Team Go', 'true');	 
 
 CREATE TABLE "SalesTeam" (
 	"TeamKey" VARCHAR(32) NOT NULL ,
@@ -822,8 +830,12 @@ insert into "JoinSource" values (1,-1);
 insert into "JoinSource" values (2,-2);
 insert into "JoinTarget" values (20);
 insert into "JoinTarget" values (21);
+insert into "JoinTarget" values (22);
+insert into "JoinTarget" values (23);
 insert into "JoinRelation" values (1, 20);
 insert into "JoinRelation" values (1, 21);
+insert into "JoinRelation" values (1, 22);
+insert into "JoinRelation" values (1, 23);
 
 CREATE TABLE "JoinHiddenRelation" (	 
 	"SourceID" INTEGER NOT NULL ,
@@ -850,9 +862,10 @@ CREATE TABLE "User" (
 	"UserName"  VARCHAR(60) NOT NULL ,
 	"Password" VARCHAR(60),
 	"Enabled" BOOLEAN,
+	"UserType" VARCHAR(20),
 	PRIMARY KEY ("UserName"));	
-insert into "User" values ('Willi', '$2a$10$ekL4q.jeDmuc2AhZF/ARUe2KTMczEBHZlML.bN985noWuJcdilbg6', true); 
-insert into "User" values ('Marvin', '$2a$10$dPD0o8lEbOy0vYtpWkE78.vVBKWElJjiezkFo1nr6hG3EBRx4Gpl.', true);
+insert into "User" values ('Willi', '$2a$10$ekL4q.jeDmuc2AhZF/ARUe2KTMczEBHZlML.bN985noWuJcdilbg6', true, 'INTERACTIVE'); 
+insert into "User" values ('Marvin', '$2a$10$dPD0o8lEbOy0vYtpWkE78.vVBKWElJjiezkFo1nr6hG3EBRx4Gpl.', true, 'INTERACTIVE');
 
 CREATE TABLE "CountryRestriction" (	 
 	"UserName"  VARCHAR(60) NOT NULL ,
@@ -946,7 +959,7 @@ CREATE TABLE "AssociationOneToOneSource"(
  
 insert into "AssociationOneToOneSource" values ('SA', 'TA', 'TB');
 insert into "AssociationOneToOneSource" values ('SB', 'TB', 'TA');
-insert into "AssociationOneToOneSource" values ('SC', 'TA', 'TB');
+insert into "AssociationOneToOneSource" values ('SC', 'TC', 'TD');
 insert into "AssociationOneToOneSource" values ('SD', null, null);
 
 CREATE TABLE "AssociationOneToOneTarget"(
@@ -954,8 +967,10 @@ CREATE TABLE "AssociationOneToOneTarget"(
 	"SOURCE"  VARCHAR(32),
  PRIMARY KEY ("ID"));
  
-insert into "AssociationOneToOneTarget" values ('TA', 'SC');
-insert into "AssociationOneToOneTarget" values ('TB', 'SC');
+insert into "AssociationOneToOneTarget" values ('TA', 'SA');
+insert into "AssociationOneToOneTarget" values ('TB', 'SB');
+insert into "AssociationOneToOneTarget" values ('TC', 'SC');
+insert into "AssociationOneToOneTarget" values ('TD', 'SC');
 
 
 ------Temporal Data-------------------------
@@ -967,9 +982,97 @@ CREATE TABLE "TemporalWithValidityPeriod"(
 	"Value" VARCHAR(255),
  PRIMARY KEY ("ID", "StartDate"));
  
- INSERT INTO "TemporalWithValidityPeriod" values ('99', '2022-01-01', '2022-10-31','Plumber');
- INSERT INTO "TemporalWithValidityPeriod" values ('99', '2022-11-01', '9999-12-31','Electrician');
- INSERT INTO "TemporalWithValidityPeriod" values ('98', '2022-01-01', '9999-12-31','Architect');
+INSERT INTO "TemporalWithValidityPeriod" values ('99', '2022-01-01', '2022-10-31','Plumber');
+INSERT INTO "TemporalWithValidityPeriod" values ('99', '2022-11-01', '9999-12-31','Electrician');
+INSERT INTO "TemporalWithValidityPeriod" values ('98', '2022-01-01', '9999-12-31','Architect');
+ 
+------Inhereitance by join------------------
+CREATE TABLE "InheritanceByJoinAccount"(
+    "ID" VARCHAR(32) NOT NULL,
+    "Owner" VARCHAR(32) NOT NULL,
+    "Type" VARCHAR(31) NOT NULL,
+    "Amount" DECIMAL(16,5),
+    PRIMARY KEY ("ID"));    
+
+INSERT INTO "InheritanceByJoinAccount" values ('f371be9253ab434aaf79259427687a7e', '98' ,'CurrentAccount', 12540.0);
+INSERT INTO "InheritanceByJoinAccount" values ('626e6a63a1284d8180efb542c556f003', '99' ,'CurrentAccount', 922.31);
+INSERT INTO "InheritanceByJoinAccount" values ('8ce66481d8114db0bbf7f0fc621dade7', '97' ,'SavingAccount', 4210.6);    
+INSERT INTO "InheritanceByJoinAccount" values ('5425c3635eae4548bc82a7adddcad14d', '98' ,'SavingAccount', 3520.0);    
+INSERT INTO "InheritanceByJoinAccount" values ('611b57e8b0784b169a0ccefc6379ff0a', '99' ,'LockedSavingAccount', 20000.0);    
+    
+CREATE TABLE "InheritanceByJoinSavingAccount"(
+    "ID" VARCHAR(32) NOT NULL,
+    "InterestRate" NUMERIC(5,2) NOT NULL,
+    PRIMARY KEY ("ID"));  
+    
+ INSERT INTO "InheritanceByJoinSavingAccount" values ('8ce66481d8114db0bbf7f0fc621dade7', 3.2);    
+ INSERT INTO "InheritanceByJoinSavingAccount" values ('5425c3635eae4548bc82a7adddcad14d', 2.9); 
+ INSERT INTO "InheritanceByJoinSavingAccount" values ('611b57e8b0784b169a0ccefc6379ff0a', 3.1); 
+ 
+CREATE TABLE "InheritanceByJoinLockedSavingAccount"(
+    "AccountId" VARCHAR(32) NOT NULL,
+    "LockingPeriod" INT,
+    PRIMARY KEY ("AccountId"));
+    
+ INSERT INTO "InheritanceByJoinLockedSavingAccount" values ('611b57e8b0784b169a0ccefc6379ff0a', 2);
+
+CREATE TABLE "InheritanceByJoinCurrentAccount"(
+    "ID" VARCHAR(32) NOT NULL,
+    "InterestRate" NUMERIC(5,2) NOT NULL,
+    "BorrowingRate" NUMERIC(5,2) NOT NULL,
+    "CreditLimit" NUMERIC(10,2) NOT NULL,    
+    PRIMARY KEY ("ID"));
+
+ INSERT INTO "InheritanceByJoinCurrentAccount" values ('f371be9253ab434aaf79259427687a7e', 1.2, 10.5, 10000);
+ INSERT INTO "InheritanceByJoinCurrentAccount" values ('626e6a63a1284d8180efb542c556f003', 1.3, 12.5, 8000);    
+    
+ 
+ CREATE TABLE "InheritanceByJoinTransaction"(
+    "ID" VARCHAR(32) NOT NULL,
+    "AccountID" VARCHAR(32) NOT NULL,
+    "Amount" DECIMAL(16,5),
+     PRIMARY KEY ("ID"));
+ INSERT INTO "InheritanceByJoinTransaction" values ('ac64b6a9f4f7405e9964025e8a611ddc', 'f371be9253ab434aaf79259427687a7e', 1000.20);
+ INSERT INTO "InheritanceByJoinTransaction" values ('6d21f36022a84192818f8dbc86a0acb3', '626e6a63a1284d8180efb542c556f003', -800);  
+ INSERT INTO "InheritanceByJoinTransaction" values ('783f30d2b4cc40a9a72e9fe6cc0adb9b', '611b57e8b0784b169a0ccefc6379ff0a', 20000);
+ INSERT INTO "InheritanceByJoinTransaction" values ('4397a9032fff4038a3a4bac068352415', '5425c3635eae4548bc82a7adddcad14d', 2500);
+ INSERT INTO "InheritanceByJoinTransaction" values ('6b320b7e1a164ae5bd848c2793236db2', '5425c3635eae4548bc82a7adddcad14d', -120);   
+
+ CREATE TABLE "InheritanceByJoinCompoundSuper"(
+    "CodePublisher" VARCHAR(10) NOT NULL,
+    "CodeID" VARCHAR(10) NOT NULL,
+    "DivisionCode" VARCHAR(10) NOT NULL,
+    --Default DiscriminatorColumn for EclipseLink
+    "DTYPE"  VARCHAR(31) NOT NULL,
+    PRIMARY KEY ("CodePublisher", "CodeID", "DivisionCode"));
+ 
+insert into "InheritanceByJoinCompoundSuper" values( 'ISO', '3166-1','BEL', 'InheritanceByJoinCompoundSub');    
+insert into "InheritanceByJoinCompoundSuper" values( 'ISO', '3166-1','DEU', 'InheritanceByJoinCompoundSub');
+insert into "InheritanceByJoinCompoundSuper" values( 'ISO', '3166-1','USA', 'InheritanceByJoinCompoundSub');
+insert into "InheritanceByJoinCompoundSuper" values( 'ISO', '3166-1','CHE', 'InheritanceByJoinCompoundSub'); 
+
+ CREATE TABLE "InheritanceByJoinCompoundSub"(
+    "CodePublisher" VARCHAR(10) NOT NULL,
+    "CodeID" VARCHAR(10) NOT NULL,
+    "PartCode" VARCHAR(10) NOT NULL,
+    "Value" VARCHAR(31) ,
+    PRIMARY KEY ("CodePublisher", "CodeID", "PartCode"));
+ 
+insert into "InheritanceByJoinCompoundSub" values( 'ISO', '3166-1','BEL', 'Belgien');    
+insert into "InheritanceByJoinCompoundSub" values( 'ISO', '3166-1','DEU', 'Deutschland');
+insert into "InheritanceByJoinCompoundSub" values( 'ISO', '3166-1','USA', 'America');
+insert into "InheritanceByJoinCompoundSub" values( 'ISO', '3166-1','CHE', 'Schweiz'); 
+ -------------------------------------------- 
+ 
+-- CREATE TABLE "Pages"(
+--	"token" uuid NOT NULL,
+--	"skip" INTEGER NOT NULL,
+--	"top" INTEGER NOT NULL,
+--	"baseUri" VARCHAR(255),
+--	"oDataPath" VARCHAR(255),
+--	"queryPath" VARCHAR(255),	
+--	"fragments" VARCHAR(255),
+-- PRIMARY KEY ("ID", "StartDate"));
  
 --------------------------------------------
 CREATE TABLE "DummyToBeIgnored" (
@@ -1004,3 +1107,4 @@ CREATE TABLE "DummyToBeIgnored" (
 --						AND  a."CodeID" = "ID"
 --						AND  a."DivisionCode" = "Division" )
 --				);
+	 

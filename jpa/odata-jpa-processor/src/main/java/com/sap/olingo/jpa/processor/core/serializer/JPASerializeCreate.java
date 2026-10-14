@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.olingo.commons.api.data.ContextURL;
-import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.edm.EdmBindingTarget;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.edm.EdmType;
@@ -17,7 +16,6 @@ import org.apache.olingo.server.api.serializer.EntitySerializerOptions;
 import org.apache.olingo.server.api.serializer.ODataSerializer;
 import org.apache.olingo.server.api.serializer.SerializerException;
 import org.apache.olingo.server.api.serializer.SerializerResult;
-import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriInfoResource;
 import org.apache.olingo.server.api.uri.queryoption.ApplyOption;
 import org.apache.olingo.server.api.uri.queryoption.CountOption;
@@ -38,12 +36,12 @@ import com.sap.olingo.jpa.processor.core.query.Utility;
 
 final class JPASerializeCreate implements JPASerializer {
   private final ServiceMetadata serviceMetadata;
-  private final UriInfo uriInfo;
+  private final UriInfoResource uriInfo;
   private final ODataSerializer serializer;
   private final JPAODataSessionContextAccess serviceContext;
 
   public JPASerializeCreate(final ServiceMetadata serviceMetadata, final ODataSerializer serializer,
-      final UriInfo uriInfo, final JPAODataSessionContextAccess serviceContext) {
+      final UriInfoResource uriInfo, final JPAODataSessionContextAccess serviceContext) {
     this.uriInfo = uriInfo;
     this.serializer = serializer;
     this.serviceMetadata = serviceMetadata;
@@ -56,7 +54,7 @@ final class JPASerializeCreate implements JPASerializer {
   }
 
   @Override
-  public SerializerResult serialize(final ODataRequest request, final EntityCollection result)
+  public SerializerResult serialize(final ODataRequest request, final JPAEntityCollectionExtension result)
       throws SerializerException, ODataJPASerializerException {
 
     final ExpandOption expandOption = new ExpandOptionWrapper(new ExpandItemWrapper());
@@ -82,7 +80,7 @@ final class JPASerializeCreate implements JPASerializer {
     }
   }
 
-  private class ExpandItemWrapper implements ExpandItem {
+  private static class ExpandItemWrapper implements ExpandItem {
 
     @Override
     public ApplyOption getApplyOption() {
@@ -161,7 +159,7 @@ final class JPASerializeCreate implements JPASerializer {
 
   }
 
-  private class ExpandOptionWrapper implements ExpandOption {
+  private static class ExpandOptionWrapper implements ExpandOption {
 
     private final List<ExpandItem> items = new ArrayList<>(1);
 

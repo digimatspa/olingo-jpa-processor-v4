@@ -3,6 +3,7 @@ package com.sap.olingo.jpa.processor.cb.impl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -113,7 +114,7 @@ class EntityManagerWrapperTest {
   @BeforeEach
   void setup() {
     sd = mock(JPAServiceDocument.class);
-    cut = new EntityManagerWrapper(em, sd);
+    cut = new EntityManagerWrapper(em, sd, null);
   }
 
   static Stream<Arguments> parameterFreeMethod() throws NoSuchMethodException, SecurityException {
@@ -246,13 +247,15 @@ class EntityManagerWrapperTest {
   @ParameterizedTest
   @MethodSource("notImplementedMethod")
   void testThrowsNotImplemented(final Method m, final Object p1, final Object p2)
-      throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+      throws IllegalArgumentException {
 
     Exception e = null;
     if (m.getParameterCount() == 1) {
       e = assertThrows(InvocationTargetException.class, () -> m.invoke(cut, p1));
     } else if (m.getParameterCount() == 2) {
       e = assertThrows(InvocationTargetException.class, () -> m.invoke(cut, p1, p2));
+    } else {
+      fail();
     }
     assertTrue(e.getCause() instanceof NotImplementedException);
   }

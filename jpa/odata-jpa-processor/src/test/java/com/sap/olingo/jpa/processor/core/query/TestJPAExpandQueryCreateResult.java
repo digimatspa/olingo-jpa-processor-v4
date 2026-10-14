@@ -14,6 +14,7 @@ import jakarta.persistence.Tuple;
 
 import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.ex.ODataException;
+import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ class TestJPAExpandQueryCreateResult extends TestBase {
   private JPAExpandJoinQuery cut;
   private JPAODataSessionContextAccess sessionContext;
   private JPAODataInternalRequestContext requestContext;
+  private OData odata;
 
   @BeforeEach
   void setup() throws ODataException, ODataJPAIllegalAccessException {
@@ -44,11 +46,12 @@ class TestJPAExpandQueryCreateResult extends TestBase {
     createHeaders();
     final EdmEntityType targetEntity = new EdmEntityTypeDouble(nameBuilder, "BusinessPartnerRole");
     sessionContext = new JPAODataContextAccessDouble(new JPAEdmProvider(PUNIT_NAME, emf, null,
-        TestBase.enumPackages), dataSource, null, null);
+        TestBase.enumPackages), emf, dataSource, null, null, null);
 
     final JPAODataRequestContext externalContext = mock(JPAODataRequestContext.class);
     when(externalContext.getEntityManager()).thenReturn(emf.createEntityManager());
-    requestContext = new JPAODataInternalRequestContext(externalContext, sessionContext);
+    odata = OData.newInstance();
+    requestContext = new JPAODataInternalRequestContext(externalContext, sessionContext, odata);
     requestContext.setUriInfo(new UriInfoDouble(new ExpandItemDouble(targetEntity).getResourcePath()));
 
     cut = new JPAExpandJoinQuery(null, helper.getJPAAssociationPath("Organizations", "Roles"),
@@ -243,7 +246,7 @@ class TestJPAExpandQueryCreateResult extends TestBase {
 
     final List<Tuple> result = new ArrayList<>();
     final HashMap<String, Object> oneResult = new HashMap<>();
-    oneResult.put("SupportEngineers" + JPAExpandJoinQuery.ALIAS_SEPARATOR + "ID", "2");
+    oneResult.put("SupportEngineers" + JPAAbstractJoinQuery.ALIAS_SEPARATOR + "ID", "2");
     oneResult.put("ID", "97");
     final Tuple tuple = new TupleDouble(oneResult);
     result.add(tuple);

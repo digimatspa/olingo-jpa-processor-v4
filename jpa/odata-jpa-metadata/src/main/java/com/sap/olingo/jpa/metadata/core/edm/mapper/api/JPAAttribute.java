@@ -86,23 +86,37 @@ public interface JPAAttribute extends JPAElement, JPAAnnotatable {
    */
   public boolean isCollection();
 
-  public boolean isComplex();
+  public default boolean isComplex() {
+    return false;
+  }
 
   /**
    * True if the property has an enum as type
    * @return
    */
-  public boolean isEnum();
+  public default boolean isEnum() {
+    return false;
+  }
 
-  public boolean isEtag();
+  public default boolean isEtag() {
+    return false;
+  }
 
-  public boolean isKey();
+  public default boolean isKey() {
+    return false;
+  }
 
-  public boolean isSearchable();
+  public default boolean isSearchable() {
+    return false;
+  }
 
   public boolean hasProtection();
 
   public boolean isTransient();
+
+  public default boolean isVirtual() {
+    return false;
+  }
 
   /**
    *
